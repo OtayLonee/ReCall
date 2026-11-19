@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReCall - Student Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Mammoth.js for .docx Word Document Importing with Images/Logos -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        /* Light Mode & Dark Mode Global Theme Variables */
+        body.light-mode { background-color: #f1f5f9; color: #0f172a; }
+        body.light-mode .bg-slate-950 { background-color: #f1f5f9 !important; }
+        body.light-mode .bg-slate-900 { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+        body.light-mode .bg-slate-900\/90 { background-color: rgba(255, 255, 255, 0.9) !important; }
+        body.light-mode .border-slate-800 { border-color: #cbd5e1 !important; }
+        body.light-mode .text-white { color: #0f172a !important; }
+        body.light-mode .text-slate-100 { color: #0f172a !important; }
+        body.light-mode .text-slate-300 { color: #334155 !important; }
+        body.light-mode .text-slate-400 { color: #64748b !important; }
+        body.light-mode .text-slate-500 { color: #94a3b8 !important; }
+
+        /* Google Docs Style Paginated Document Container */
+        .document-page-container {
+            background-color: #1e293b;
+            padding: 40px 20px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            border-radius: 0.75rem;
+            border: 1px solid #334155;
+        }
+        body.light-mode .document-page-container {
+            background-color: #cbd5e1;
+            border-color: #94a3b8;
+        }
+
+        /* Individual Virtual Page (A4 / Letter Sheet Look) */
+        .manuscript-page {
+            background: #ffffff;
+            color: #000000;
+            width: 100%;
+            max-width: 816px;
+            min-height: 1056px;
+            padding: 72px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            font-family: 'Times New Roman', Times, serif, Georgia;
+            font-size: 14pt;
+            line-height: 2.0;
+            position: relative;
+            outline: none;
+        }
+        .manuscript-page img {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block;
+            margin: 15px auto;
+        }
+        .manuscript-page table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .manuscript-page th, .manuscript-page td {
+            border: 1px solid #000000;
+            padding: 8px 12px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+    <!-- Top Navigation Bar -->
+    <header class="w-full py-4 px-6 md:px-8 flex flex-col md:flex-row items-center justify-between border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50 gap-4">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="returnToHome()">
+            <div class="bg-indigo-600 text-white font-bold h-10 w-10 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30">R</div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white">ReCall <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-md font-normal ml-2">Student Portal</span></h1>
+                <p id="user-display-email" class="text-xs text-slate-400">Verifying session...</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button onclick="toggleTheme()" id="btn-theme-toggle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">☀️ Light Mode</button>
+            <button onclick="returnToHome()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">🏠 My Projects</button>
+            <button onclick="handleLogout()" class="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-600/30 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">Sign Out</button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow p-6 max-w-7xl mx-auto w-full">
+        
+        <!-- VIEW 1: Home Screen (My Projects List) -->
+        <div id="home-projects-view" class="space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white">My Capstone Project Rooms</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">View project rooms you created or rooms where you were invited as a team member.</p>
+                </div>
+                <button onclick="openCreateProjectModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-xs whitespace-nowrap">
+                    + Create Project Room
+                </button>
+            </div>
+
+            <!-- Grid of Project Cards -->
+            <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div class="col-span-full text-center py-12 text-slate-400 text-sm">Loading your project rooms...</div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: Active Project Room Workspace -->
+        <div id="active-project-state" class="hidden space-y-6">
+            
+            <!-- Return to Home Bar -->
+            <div>
+                <button onclick="returnToHome()" class="inline-flex items-center space-x-2 text-xs font-medium text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 px-3.5 py-2 rounded-xl transition-all">
+                    <span>← Back to Home Screen (My Projects)</span>
+                </button>
+            </div>
+
+            <!-- Project Room Header Bar -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <div class="flex items-center space-x-2 mb-1">
+                        <span id="project-status-badge" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-0.5 rounded-full font-medium">Status: Proposal Stage</span>
+                        <span class="text-xs text-slate-400">Room Code: <strong id="project-room-code" class="text-slate-200">RC-2026-XXXX</strong></span>
+                    </div>
+                    <h2 id="project-title-heading" class="text-2xl font-bold text-white">Loading Project Title...</h2>
+                </div>
+                <div>
+                    <span id="user-privilege-badge" class="bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 text-xs px-3 py-1.5 rounded-xl font-semibold">👑 Room Leader</span>
+                </div>
+            </div>
+
+            <!-- Workspace Navigation Tabs -->
+            <div class="flex space-x-2 border-b border-slate-800 pb-2 overflow-x-auto">
+                <button onclick="switchTab('workspace')" id="tab-workspace" class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white transition-all whitespace-nowrap">📄 Document Workspace</button>
+                <button onclick="switchTab('team')" id="tab-team" class="px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-all whitespace-nowrap">👥 Team & Adviser</button>
+                <button onclick="switchTab('chat')" id="tab-chat" class="px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-all whitespace-nowrap">💬 Discussion Chat</button>
+            </div>
+
+            <!-- Tab 1: Paginated Document Workspace with Chapter Outline Sidebar -->
+            <div id="content-workspace" class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                
+                <!-- Left Column: Chapter Outline (1 Col) -->
+                <div class="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 lg:sticky lg:top-24">
+                    <div>
+                        <h3 class="font-bold text-white text-sm">📑 Manuscript Outline</h3>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Click any section to jump straight to it.</p>
+                    </div>
+                    <div id="manuscript-outline" class="space-y-1.5 max-h-[450px] overflow-y-auto pr-1">
+                        <p class="text-xs text-slate-500 italic">Outline generates automatically from headings in your document.</p>
+                    </div>
+                    <div class="pt-2 border-t border-slate-800">
+                        <button onclick="generateOutline()" class="w-full bg-slate-800 hover:bg-slate-700 text-indigo-400 text-xs font-medium py-2 rounded-xl transition-all">
+                            🔄 Refresh Outline
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Column: Paginated Google-Docs Style Viewer & Importer (3 Cols) -->
+                <div class="lg:col-span-3 space-y-4">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <h3 class="font-bold text-white text-base">Capstone Manuscript Paginated Viewer</h3>
+                                <p class="text-xs text-slate-400">Accurate Word (.docx) translation with images, logos, and academic formatting.</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <input type="file" id="docx-upload" accept=".docx" class="hidden" onchange="handleDocxUpload(event)" />
+                                <button onclick="document.getElementById('docx-upload').click()" class="bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 text-xs px-3.5 py-2 rounded-xl font-medium transition-all">
+                                    📤 Upload Word (.docx)
+                                </button>
+                                <button onclick="saveDocumentContent(true)" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/20">
+                                    💾 Save Manuscript
+                                </button>
+                                <span id="save-status-badge" class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg">🟢 Synced</span>
+                            </div>
+                        </div>
+
+                        <!-- Paginated Sheet Container -->
+                        <div class="document-page-container" id="paginated-editor-root">
+                            <div class="manuscript-page" contenteditable="true" id="editable-manuscript-sheet">
+                                <h1 style="text-align: center;">CHAPTER 1</h1>
+                                <h2 style="text-align: center;">Introduction and Background of the Study</h2>
+                                <p>Start typing your capstone paper here, or upload your official Microsoft Word (.docx) document using the button above to render your institutional logos, tables, and formatting...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Tab 2: Team & Adviser Management -->
+            <div id="content-team" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-white text-base">Project Team Members</h3>
+                        <button onclick="openInviteModal()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-medium transition-all">+ Invite by Email</button>
+                    </div>
+                    <div id="member-list" class="space-y-3">
+                        <p class="text-xs text-slate-400">Loading members...</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <h3 class="font-bold text-white text-base">Faculty Adviser Status</h3>
+                    <div id="adviser-status-box" class="bg-slate-950 p-5 rounded-xl border border-slate-800 text-center space-y-3">
+                        <p class="text-xs text-slate-400">Checking adviser status...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Chat Room -->
+            <div id="content-chat" class="hidden">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col h-[500px]">
+                    <h3 class="font-bold text-white text-base mb-2">Project Discussion Chat</h3>
+                    <div id="chat-messages" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl p-4 overflow-y-auto space-y-3 mb-4">
+                        <p class="text-xs text-slate-500 text-center">Loading messages...</p>
+                    </div>
+                    <form onsubmit="sendChatMessage(event)" class="flex gap-2">
+                        <input type="text" id="chat-input" placeholder="Type a message..." class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium text-sm transition-all">Send</button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal 1: Create Project Room -->
+    <div id="modal-create-project" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div>
+                <h3 class="font-bold text-white text-lg">Create Project Room</h3>
+                <p class="text-xs text-slate-400 mt-1">Enter your official capstone project title to generate a room code.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1.5">Capstone Project Title</label>
+                <input type="text" id="input-project-title" placeholder="e.g., ReCall: An Integrated Capstone System" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button type="button" onclick="closeCreateProjectModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl font-medium hover:bg-slate-700 transition-all">Cancel</button>
+                <button type="button" onclick="submitCreateProjectRoom()" id="btn-submit-project" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/30">Create Room</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Invite Groupmate by Email -->
+    <div id="modal-invite-member" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div>
+                <h3 class="font-bold text-white text-lg">Invite Groupmate</h3>
+                <p class="text-xs text-slate-400 mt-1">Enter the registered student email of the groupmate you want to add.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1.5">Student Email Address</label>
+                <input type="email" id="input-invite-email" placeholder="groupmate@domain.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button type="button" onclick="closeInviteModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl font-medium hover:bg-slate-700 transition-all">Cancel</button>
+                <button type="button" onclick="submitInviteMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/30">Add to Room</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Request Adviser -->
+    <div id="modal-adviser" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h3 class="font-bold text-white text-lg">Request Faculty Adviser</h3>
+            <p class="text-xs text-slate-400">Select an available faculty adviser registered in ReCall.</p>
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Registered Faculty Advisers</label>
+                <select id="select-adviser" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    <option value="">Loading advisers...</option>
+                </select>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeAdviserModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl font-medium hover:bg-slate-700 transition-all">Cancel</button>
+                <button onclick="submitAdviserRequest()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/30">Send Request</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Controller -->
+    <script>
+        const SUPABASE_URL = 'https://wummzhthahqaykskadnu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bW16aHRoYWhxYXlrc2thZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTA3OTksImV4cCI6MjA5OTE4Njc5OX0.zNuWXTw7pRme2zJ7OQNLD53ASW4C75dUwXaOC9cB8yY';
+
+
+        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let userMemberships = [];
+        let activeProject = null;
+        let isCurrentLeader = false;
+        let autoSaveTimer = null;
+        let isLightMode = false;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Setup auto-save listener on the editable manuscript sheet
+            const sheet = document.getElementById('editable-manuscript-sheet');
+            sheet.addEventListener('input', () => {
+                if (!activeProject) return;
+                document.getElementById('save-status-badge').innerText = "⏳ Saving...";
+                document.getElementById('save-status-badge').className = "text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1.5 rounded-lg";
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(() => saveDocumentContent(false), 1500);
+            });
+
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (!session) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            const { data: profile } = await _supabase.from('profiles').select('role').eq('id', session.user.id).single();
+            if (!profile || profile.role !== 'student') {
+                alert("Unauthorized: This page is restricted to students only.");
+                await _supabase.auth.signOut();
+                window.location.href = 'index.html';
+                return;
+            }
+
+            currentUser = session.user;
+            document.getElementById('user-display-email').innerText = currentUser.email;
+
+            await loadAllUserProjects();
+        });
+
+        // --- THEME TOGGLE ---
+        function toggleTheme() {
+            isLightMode = !isLightMode;
+            const body = document.body;
+            const btn = document.getElementById('btn-theme-toggle');
+
+            if (isLightMode) {
+                body.classList.add('light-mode');
+                btn.innerText = "🌙 Dark Mode";
+                btn.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all";
+            } else {
+                body.classList.remove('light-mode');
+                btn.innerText = "☀️ Light Mode";
+                btn.className = "bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all";
+            }
+        }
+
+        // --- MANUSCRIPT OUTLINE GENERATOR ---
+        function generateOutline() {
+            const outlineContainer = document.getElementById('manuscript-outline');
+            const sheet = document.getElementById('editable-manuscript-sheet');
+            if (!sheet) return;
+
+            const headings = sheet.querySelectorAll('h1, h2, h3');
+            if (headings.length === 0) {
+                outlineContainer.innerHTML = '<p class="text-xs text-slate-500 italic">No headings found. Use Heading styles in the editor to build your outline.</p>';
+                return;
+            }
+
+            outlineContainer.innerHTML = '';
+            headings.forEach((heading, idx) => {
+                const text = heading.innerText.trim();
+                if (!text) return;
+                heading.id = `section-${idx}`;
+                const indent = heading.tagName === 'H2' ? 'ml-3 text-[11px]' : (heading.tagName === 'H3' ? 'ml-6 text-[10px]' : 'text-xs font-semibold');
+                
+                outlineContainer.innerHTML += `
+                    <button onclick="jumpToSection('section-${idx}')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-all truncate ${indent}">
+                        📌 ${text}
+                    </button>
+                `;
+            });
+        }
+
+        function jumpToSection(sectionId) {
+            const targetElement = document.getElementById(sectionId);
+            if (targetElement) {
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // --- LOAD ALL PROJECTS ---
+        async function loadAllUserProjects() {
+            const { data: memberships, error } = await _supabase
+                .from('project_members')
+                .select('project_id, is_leader, projects(*)')
+                .eq('user_id', currentUser.id);
+
+            const grid = document.getElementById('projects-grid');
+
+            if (error || !memberships || memberships.length === 0) {
+                userMemberships = [];
+                grid.innerHTML = `
+                    <div class="col-span-full bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
+                        <div class="text-4xl mb-3">📂</div>
+                        <h3 class="text-lg font-bold text-white mb-1">No Project Rooms Yet</h3>
+                        <p class="text-xs text-slate-400 mb-5">Create a new project room or wait for a group leader to invite you using your email.</p>
+                        <button onclick="openCreateProjectModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-xl transition-all text-xs">
+                            + Create Your First Project Room
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            userMemberships = memberships;
+            grid.innerHTML = '';
+
+            memberships.forEach((m, index) => {
+                const proj = m.projects;
+                if (!proj) return;
+
+                const roleBadge = m.is_leader 
+                    ? `<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">👑 Created by You (Leader)</span>`
+                    : `<span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">👤 Invited Member</span>`;
+
+                grid.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col justify-between space-y-5 transition-all shadow-lg">
+                        <div class="space-y-2.5">
+                            <div class="flex items-center justify-between gap-2">
+                                ${roleBadge}
+                                <span class="text-[11px] font-mono text-slate-500">${proj.room_code}</span>
+                            </div>
+                            <h3 class="text-base font-bold text-white leading-snug">${proj.title}</h3>
+                            <p class="text-xs text-slate-400">Status: <span class="text-emerald-400">${proj.status}</span></p>
+                        </div>
+                        <button onclick="openProjectRoom(${index})" class="w-full bg-slate-800 hover:bg-indigo-600 text-white text-xs font-semibold py-2.5 rounded-xl transition-all">
+                            Open Project Room →
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function openProjectRoom(index) {
+            const membership = userMemberships[index];
+            if (!membership || !membership.projects) return;
+
+            activeProject = membership.projects;
+            isCurrentLeader = membership.is_leader;
+
+            document.getElementById('home-projects-view').classList.add('hidden');
+            document.getElementById('active-project-state').classList.remove('hidden');
+
+            document.getElementById('project-title-heading').innerText = activeProject.title;
+            document.getElementById('project-room-code').innerText = activeProject.room_code;
+            document.getElementById('project-status-badge').innerText = `Status: ${activeProject.status}`;
+            document.getElementById('user-privilege-badge').innerText = isCurrentLeader ? "👑 Room Leader" : "👤 Team Member";
+
+            const sheet = document.getElementById('editable-manuscript-sheet');
+            sheet.innerHTML = activeProject.document_content || '<h1 style="text-align: center;">CHAPTER 1</h1><p>Start typing your capstone paper here...</p>';
+            document.getElementById('save-status-badge').innerText = "🟢 Synced";
+
+            generateOutline();
+            switchTab('workspace');
+            loadTeamMembers();
+            loadAdviserStatus();
+            loadChatMessages();
+        }
+
+        function returnToHome() {
+            activeProject = null;
+            document.getElementById('active-project-state').classList.add('hidden');
+            document.getElementById('home-projects-view').classList.remove('hidden');
+            loadAllUserProjects();
+        }
+
+        // --- CREATE PROJECT MODAL ---
+        function openCreateProjectModal() { document.getElementById('modal-create-project').classList.remove('hidden'); document.getElementById('input-project-title').focus(); }
+        function closeCreateProjectModal() { document.getElementById('modal-create-project').classList.add('hidden'); document.getElementById('input-project-title').value = ''; }
+
+        async function submitCreateProjectRoom() {
+            const title = document.getElementById('input-project-title').value.trim();
+            if (!title) { alert("Please enter a project title."); return; }
+
+            const submitBtn = document.getElementById('btn-submit-project');
+            submitBtn.innerText = "Creating..."; submitBtn.disabled = true;
+
+            const roomCode = 'RC-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+
+            const { data: projData, error: projError } = await _supabase
+                .from('projects')
+                .insert([{ title: title, room_code: roomCode, leader_id: currentUser.id }])
+                .select()
+                .single();
+
+            if (projError) {
+                alert("Error creating project: " + projError.message);
+                submitBtn.innerText = "Create Room"; submitBtn.disabled = false;
+                return;
+            }
+
+            await _supabase.from('project_members').insert([{ project_id: projData.id, user_id: currentUser.id, is_leader: true }]);
+
+            submitBtn.innerText = "Create Room"; submitBtn.disabled = false;
+            closeCreateProjectModal();
+            loadAllUserProjects();
+        }
+
+        // --- ENHANCED WORD DOCUMENT UPLOAD PARSER WITH IMAGES & LOGOS ---
+        function handleDocxUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(loadEvent) {
+                const arrayBuffer = loadEvent.target.result;
+
+                const options = {
+                    convertImage: mammoth.images.imgElement(function(image) {
+                        return image.read("base64").then(function(imageBuffer) {
+                            return {
+                                src: "data:" + image.contentType + ";base64," + imageBuffer
+                            };
+                        });
+                    })
+                };
+
+                mammoth.convertToHtml({ arrayBuffer: arrayBuffer }, options)
+                    .then(function(result) {
+                        const sheet = document.getElementById('editable-manuscript-sheet');
+                        sheet.innerHTML = result.value;
+                        saveDocumentContent(true);
+                        generateOutline();
+                        alert("Word document, logos, and formatting imported successfully!");
+                    })
+                    .catch(function(err) {
+                        console.error(err);
+                        alert("Failed to parse Word document. Ensure it is a valid .docx file.");
+                    });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function saveDocumentContent(showAlert) {
+            if (!activeProject) return;
+            const sheet = document.getElementById('editable-manuscript-sheet');
+            const htmlContent = sheet.innerHTML;
+
+            const { error } = await _supabase
+                .from('projects')
+                .update({ document_content: htmlContent })
+                .eq('id', activeProject.id);
+
+            if (!error) {
+                activeProject.document_content = htmlContent;
+                document.getElementById('save-status-badge').innerText = "🟢 Synced";
+                document.getElementById('save-status-badge').className = "text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg";
+                generateOutline();
+                if (showAlert) alert("Manuscript saved to cloud!");
+            }
+        }
+
+        // --- TEAM MEMBERS ---
+        async function loadTeamMembers() {
+            const { data: members } = await _supabase
+                .from('project_members')
+                .select('is_leader, profiles(full_name, email)')
+                .eq('project_id', activeProject.id);
+
+            const listContainer = document.getElementById('member-list');
+            if (!members) return;
+
+            listContainer.innerHTML = '';
+            members.forEach(m => {
+                listContainer.innerHTML += `
+                    <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <div class="flex items-center space-x-3">
+                            <div class="h-8 w-8 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                                ${m.profiles.full_name.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-white">${m.profiles.full_name}</p>
+                                <p class="text-[11px] text-slate-400">${m.profiles.email || ''}</p>
+                            </div>
+                        </div>
+                        ${m.is_leader ? '<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] px-2 py-0.5 rounded-md font-semibold">👑 Leader</span>' : '<span class="text-xs text-slate-400">Member</span>'}
+                    </div>
+                `;
+            });
+        }
+
+        function openInviteModal() { document.getElementById('modal-invite-member').classList.remove('hidden'); document.getElementById('input-invite-email').focus(); }
+        function closeInviteModal() { document.getElementById('modal-invite-member').classList.add('hidden'); document.getElementById('input-invite-email').value = ''; }
+
+        async function submitInviteMember() {
+            const email = document.getElementById('input-invite-email').value.trim();
+            if (!email) return;
+
+            const { data: studentProfile, error } = await _supabase
+                .from('profiles').select('id, role, full_name').eq('email', email).single();
+
+            if (error || !studentProfile) { alert("Student not found. Make sure your groupmate has registered an account first."); return; }
+            if (studentProfile.role !== 'student') { alert("That email belongs to a Faculty Adviser, not a student."); return; }
+
+            const { error: insertError } = await _supabase
+                .from('project_members').insert([{ project_id: activeProject.id, user_id: studentProfile.id, is_leader: false }]);
+
+            if (insertError) { alert("Could not add member (they may already be in the room)."); return; }
+
+            closeInviteModal();
+            alert(`${studentProfile.full_name} has been added to your project room!`);
+            loadTeamMembers();
+        }
+
+        // --- ADVISER STATUS ---
+        async function loadAdviserStatus() {
+            const statusBox = document.getElementById('adviser-status-box');
+
+            if (activeProject.adviser_id) {
+                const { data: adv } = await _supabase.from('profiles').select('full_name, email').eq('id', activeProject.adviser_id).single();
+                statusBox.innerHTML = `
+                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-3 py-1 rounded-full font-medium">✅ Assigned Adviser</span>
+                    <p class="text-sm font-bold text-white mt-2">${adv ? adv.full_name : 'Faculty Adviser'}</p>
+                    <p class="text-xs text-slate-400">${adv ? adv.email : ''}</p>
+                `;
+                return;
+            }
+
+            const { data: req } = await _supabase
+                .from('adviser_requests').select('status, profiles(full_name)').eq('project_id', activeProject.id).eq('status', 'pending').single();
+
+            if (req) {
+                statusBox.innerHTML = `
+                    <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-3 py-1 rounded-full font-medium">⏳ Request Pending</span>
+                    <p class="text-xs text-slate-300 mt-2">Waiting for <strong>${req.profiles.full_name}</strong> to accept your supervision request.</p>
+                `;
+            } else {
+                statusBox.innerHTML = `
+                    <p class="text-xs text-slate-400 mb-3">No adviser assigned or requested yet.</p>
+                    <button onclick="openAdviserModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-4 py-2.5 rounded-xl transition-all">
+                        Find & Request Adviser
+                    </button>
+                `;
+            }
+        }
+
+        async function openAdviserModal() {
+            document.getElementById('modal-adviser').classList.remove('hidden');
+            const select = document.getElementById('select-adviser');
+            select.innerHTML = '<option value="">Fetching advisers...</option>';
+
+            const { data: advisers, error } = await _supabase
+                .from('profiles')
+                .select('id, full_name, email, role')
+                .ilike('role', 'adviser');
+
+            if (error) {
+                console.error("Failed to fetch advisers:", error);
+                select.innerHTML = '<option value="">Error loading advisers (check console)</option>';
+                return;
+            }
+
+            if (!advisers || advisers.length === 0) {
+                select.innerHTML = '<option value="">No faculty advisers registered yet</option>';
+                return;
+            }
+
+            select.innerHTML = '';
+            advisers.forEach(adv => {
+                const labelName = adv.full_name || 'Unnamed Adviser';
+                const labelEmail = adv.email ? ` (${adv.email})` : '';
+                select.innerHTML += `<option value="${adv.id}">${labelName}${labelEmail}</option>`;
+            });
+        }
+
+        function closeAdviserModal() { document.getElementById('modal-adviser').classList.add('hidden'); }
+
+        async function submitAdviserRequest() {
+            const adviserId = document.getElementById('select-adviser').value;
+            if (!adviserId) return;
+
+            const { error } = await _supabase.from('adviser_requests').insert([{ project_id: activeProject.id, adviser_id: adviserId, status: 'pending' }]);
+            if (error) { alert("Error sending request: " + error.message); return; }
+
+            closeAdviserModal();
+            alert("Adviser request sent successfully!");
+            loadAdviserStatus();
+        }
+
+        // --- CHAT ---
+        async function loadChatMessages() {
+            const { data: messages } = await _supabase
+                .from('messages').select('content, created_at, profiles(full_name)').eq('project_id', activeProject.id).order('created_at', { ascending: true });
+
+            const chatContainer = document.getElementById('chat-messages');
+            if (!messages || messages.length === 0) { chatContainer.innerHTML = '<p class="text-xs text-slate-500 text-center">No messages yet. Start the conversation!</p>'; return; }
+
+            chatContainer.innerHTML = '';
+            messages.forEach(msg => {
+                chatContainer.innerHTML += `
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-500 mb-1">${msg.profiles.full_name} • ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl max-w-md text-sm text-slate-200">
+                            ${msg.content}
+                        </div>
+                    </div>
+                `;
+            });
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function sendChatMessage(event) {
+            event.preventDefault();
+            const input = document.getElementById('chat-input');
+            const content = input.value.trim();
+            if (!content || !activeProject) return;
+
+            await _supabase.from('messages').insert([{ project_id: activeProject.id, sender_id: currentUser.id, content: content }]);
+            input.value = '';
+            loadChatMessages();
+        }
+
+        function switchTab(tabName) {
+            ['workspace', 'team', 'chat'].forEach(t => {
+                document.getElementById(`content-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).className = "px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-all whitespace-nowrap";
+            });
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).className = "px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white transition-all whitespace-nowrap";
+            if(tabName === 'workspace') generateOutline();
+        }
+
+        async function handleLogout() {
+            await _supabase.auth.signOut();
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

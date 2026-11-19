@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReCall - Faculty Adviser Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Light/Dark Mode Variables */
+        body.light-mode { background-color: #f1f5f9; color: #0f172a; }
+        body.light-mode .bg-slate-950 { background-color: #f1f5f9 !important; }
+        body.light-mode .bg-slate-900 { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+        body.light-mode .bg-slate-900\/90 { background-color: rgba(255, 255, 255, 0.9) !important; }
+        body.light-mode .border-slate-800 { border-color: #cbd5e1 !important; }
+        body.light-mode .text-white { color: #0f172a !important; }
+        body.light-mode .text-slate-100 { color: #0f172a !important; }
+        body.light-mode .text-slate-300 { color: #334155 !important; }
+        body.light-mode .text-slate-400 { color: #64748b !important; }
+        body.light-mode .text-slate-500 { color: #94a3b8 !important; }
+        body.light-mode .bg-slate-950 { background-color: #f8fafc !important; }
+
+        /* Paginated Manuscript Sheet for Adviser Review */
+        .manuscript-review-sheet {
+            background: #ffffff;
+            color: #000000;
+            width: 100%;
+            max-width: 816px;
+            min-height: 1056px;
+            padding: 72px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            font-family: 'Times New Roman', Times, serif, Georgia;
+            font-size: 14pt;
+            line-height: 2.0;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+    <!-- Top Navigation Bar -->
+    <header class="w-full py-4 px-6 md:px-8 flex flex-col md:flex-row items-center justify-between border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50 gap-4">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="returnToAdviserHome()">
+            <div class="bg-emerald-600 text-white font-bold h-10 w-10 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-emerald-500/30">R</div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white">ReCall <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-md font-normal ml-2">Faculty Adviser Portal</span></h1>
+                <p id="user-display-email" class="text-xs text-slate-400">Verifying session...</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button onclick="toggleTheme()" id="btn-theme-toggle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">☀️ Light Mode</button>
+            <button onclick="returnToAdviserHome()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">📥 Inbox & Assigned Projects</button>
+            <button onclick="handleLogout()" class="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-600/30 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">Sign Out</button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow p-6 max-w-7xl mx-auto w-full">
+        
+        <!-- VIEW 1: Adviser Dashboard (Inbox Requests & Assigned Supervisions) -->
+        <div id="adviser-dashboard-view" class="space-y-8">
+            
+            <!-- Incoming Supervision Requests Section -->
+            <div class="space-y-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Incoming Supervision Requests</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Review and accept student capstone groups requesting your advisory.</p>
+                    </div>
+                </div>
+                <div id="incoming-requests-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <p class="text-xs text-slate-500">Loading incoming requests...</p>
+                </div>
+            </div>
+
+            <!-- Accepted Assigned Projects Section -->
+            <div class="space-y-4 pt-4 border-t border-slate-800/80">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Assigned Capstone Projects</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Capstone groups currently under your active supervision.</p>
+                    </div>
+                </div>
+                <div id="assigned-projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <p class="text-xs text-slate-500">Loading assigned projects...</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- VIEW 2: Project Supervision Workspace (Review Manuscript & Discussion) -->
+        <div id="adviser-workspace-view" class="hidden space-y-6">
+            
+            <div>
+                <button onclick="returnToAdviserHome()" class="inline-flex items-center space-x-2 text-xs font-medium text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 px-3.5 py-2 rounded-xl transition-all">
+                    <span>← Back to Adviser Dashboard</span>
+                </button>
+            </div>
+
+            <!-- Project Info Header -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <div class="flex items-center space-x-2 mb-1">
+                        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-0.5 rounded-full font-medium">Supervising Adviser</span>
+                        <span class="text-xs text-slate-400">Room Code: <strong id="proj-room-code" class="text-slate-200">RC-XXXX</strong></span>
+                    </div>
+                    <h2 id="proj-title" class="text-2xl font-bold text-white">Loading Title...</h2>
+                </div>
+            </div>
+
+            <!-- Adviser Workspace Tabs -->
+            <div class="flex space-x-2 border-b border-slate-800 pb-2 overflow-x-auto">
+                <button onclick="switchAdviserTab('manuscript')" id="tab-manuscript" class="px-4 py-2 text-sm font-medium rounded-xl bg-emerald-600 text-white transition-all whitespace-nowrap">📄 Manuscript Review</button>
+                <button onclick="switchAdviserTab('chat')" id="tab-chat" class="px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-all whitespace-nowrap">💬 Student Group Chat</button>
+            </div>
+
+            <!-- Tab 1: Manuscript Reviewer -->
+            <div id="content-manuscript" class="space-y-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-white text-base">Student Manuscript Read-Only View</h3>
+                        <span class="text-xs text-slate-400">Rendered with exact academic formatting & logos</span>
+                    </div>
+                    <div class="bg-slate-950 p-6 rounded-xl border border-slate-800 overflow-y-auto max-h-[700px]">
+                        <div id="adviser-manuscript-view" class="manuscript-review-sheet">
+                            <p class="text-slate-500 italic">Loading manuscript content...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Group Chat Log -->
+            <div id="content-chat" class="hidden">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col h-[500px]">
+                    <h3 class="font-bold text-white text-base mb-2">Project Discussion History</h3>
+                    <div id="adviser-chat-messages" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl p-4 overflow-y-auto space-y-3 mb-4">
+                        <p class="text-xs text-slate-500 text-center">Loading discussion logs...</p>
+                    </div>
+                    <form onsubmit="sendAdviserChatMessage(event)" class="flex gap-2">
+                        <input type="text" id="adviser-chat-input" placeholder="Type a message as adviser..." class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-medium text-sm transition-all">Send</button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Adviser Script Controller -->
+    <script>
+        const SUPABASE_URL = 'https://wummzhthahqaykskadnu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bW16aHRoYWhxYXlrc2thZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTA3OTksImV4cCI6MjA5OTE4Njc5OX0.zNuWXTw7pRme2zJ7OQNLD53ASW4C75dUwXaOC9cB8yY';
+
+        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentAdviser = null;
+        let assignedProjectsList = [];
+        let activeSupervisedProject = null;
+        let isLightMode = false;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (!session) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // ADVISER ROLE GUARD
+            const { data: profile } = await _supabase.from('profiles').select('role').eq('id', session.user.id).single();
+            if (!profile || profile.role !== 'adviser') {
+                alert("Unauthorized: This page is restricted to faculty advisers only.");
+                await _supabase.auth.signOut();
+                window.location.href = 'index.html';
+                return;
+            }
+
+            currentAdviser = session.user;
+            document.getElementById('user-display-email').innerText = currentAdviser.email;
+
+            await loadIncomingRequests();
+            await loadAssignedProjects();
+        });
+
+        // --- THEME TOGGLE ---
+        function toggleTheme() {
+            isLightMode = !isLightMode;
+            const body = document.body;
+            const btn = document.getElementById('btn-theme-toggle');
+
+            if (isLightMode) {
+                body.classList.add('light-mode');
+                btn.innerText = "🌙 Dark Mode";
+                btn.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all";
+            } else {
+                body.classList.remove('light-mode');
+                btn.innerText = "☀️ Light Mode";
+                btn.className = "bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all";
+            }
+        }
+
+        // --- INCOMING REQUESTS ---
+        async function loadIncomingRequests() {
+            const container = document.getElementById('incoming-requests-list');
+            container.innerHTML = '<p class="text-xs text-slate-500 col-span-full">Loading incoming requests...</p>';
+
+            const { data: requests, error } = await _supabase
+                .from('adviser_requests')
+                .select('id, project_id, adviser_id, status, created_at')
+                .eq('adviser_id', currentAdviser.id)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Error loading adviser requests:", error);
+                container.innerHTML = `<p class="text-xs text-rose-400 col-span-full">Failed to load requests: ${error.message}</p>`;
+                return;
+            }
+
+            if (!requests || requests.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 col-span-full">No pending student supervision requests.</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            for (const req of requests) {
+                const { data: proj } = await _supabase
+                    .from('projects')
+                    .select('title, room_code, leader_id')
+                    .eq('id', req.project_id)
+                    .single();
+
+                let leaderName = 'Student Group';
+                if (proj && proj.leader_id) {
+                    const { data: leadProf } = await _supabase
+                        .from('profiles')
+                        .select('full_name')
+                        .eq('id', proj.leader_id)
+                        .single();
+                    if (leadProf && leadProf.full_name) leaderName = leadProf.full_name;
+                }
+
+                container.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-lg">
+                        <div>
+                            <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">Pending Request</span>
+                            <h3 class="text-base font-bold text-white mt-2">${proj ? proj.title : 'Capstone Project'}</h3>
+                            <p class="text-xs text-slate-400 mt-1">Requested by Room Leader: <strong class="text-slate-200">${leaderName}</strong> (${proj ? proj.room_code : ''})</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="acceptRequest('${req.id}', '${req.project_id}')" class="flex-grow bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20">
+                                Accept Supervision
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function acceptRequest(requestId, projectId) {
+            // 1. Update request status to accepted
+            await _supabase.from('adviser_requests').update({ status: 'accepted' }).eq('id', requestId);
+
+            // 2. Assign adviser_id to the project table
+            await _supabase.from('projects').update({ adviser_id: currentAdviser.id }).eq('id', projectId);
+
+            alert("Supervision accepted! Project room has been linked to your adviser profile.");
+            loadIncomingRequests();
+            loadAssignedProjects();
+        }
+
+        // --- ASSIGNED PROJECTS ---
+        async function loadAssignedProjects() {
+            const { data: projects, error } = await _supabase
+                .from('projects')
+                .select('*')
+                .eq('adviser_id', currentAdviser.id);
+
+            const grid = document.getElementById('assigned-projects-grid');
+            if (error || !projects || projects.length === 0) {
+                assignedProjectsList = [];
+                grid.innerHTML = '<p class="text-xs text-slate-500 col-span-full">No assigned capstone projects yet.</p>';
+                return;
+            }
+
+            assignedProjectsList = projects;
+            grid.innerHTML = '';
+
+            projects.forEach((proj, index) => {
+                grid.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-6 flex flex-col justify-between space-y-5 transition-all shadow-lg">
+                        <div class="space-y-2.5">
+                            <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">Active Supervision</span>
+                            <h3 class="text-base font-bold text-white leading-snug">${proj.title}</h3>
+                            <p class="text-xs text-slate-400">Room Code: <span class="font-mono text-slate-200">${proj.room_code}</span></p>
+                        </div>
+                        <button onclick="openAssignedProject(${index})" class="w-full bg-slate-800 hover:bg-emerald-600 text-white text-xs font-semibold py-2.5 rounded-xl transition-all">
+                            Review Manuscript & Discussion →
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function openAssignedProject(index) {
+            activeSupervisedProject = assignedProjectsList[index];
+
+            document.getElementById('adviser-dashboard-view').classList.add('hidden');
+            document.getElementById('adviser-workspace-view').classList.remove('hidden');
+
+            document.getElementById('proj-title').innerText = activeSupervisedProject.title;
+            document.getElementById('proj-room-code').innerText = activeSupervisedProject.room_code;
+
+            const manuscriptSheet = document.getElementById('adviser-manuscript-view');
+            manuscriptSheet.innerHTML = activeSupervisedProject.document_content || '<p class="text-slate-400 italic">No document content uploaded yet.</p>';
+
+            switchAdviserTab('manuscript');
+            loadAdviserChatMessages();
+        }
+
+        function returnToAdviserHome() {
+            activeSupervisedProject = null;
+            document.getElementById('adviser-workspace-view').classList.add('hidden');
+            document.getElementById('adviser-dashboard-view').classList.remove('hidden');
+            loadIncomingRequests();
+            loadAssignedProjects();
+        }
+
+        // --- CHAT LOGS ---
+        async function loadAdviserChatMessages() {
+            const { data: messages } = await _supabase
+                .from('messages').select('content, created_at, profiles(full_name)').eq('project_id', activeSupervisedProject.id).order('created_at', { ascending: true });
+
+            const chatContainer = document.getElementById('adviser-chat-messages');
+            if (!messages || messages.length === 0) { chatContainer.innerHTML = '<p class="text-xs text-slate-500 text-center">No discussion messages yet.</p>'; return; }
+
+            chatContainer.innerHTML = '';
+            messages.forEach(msg => {
+                chatContainer.innerHTML += `
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-500 mb-1">${msg.profiles.full_name} • ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl max-w-md text-sm text-slate-200">
+                            ${msg.content}
+                        </div>
+                    </div>
+                `;
+            });
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function sendAdviserChatMessage(event) {
+            event.preventDefault();
+            const input = document.getElementById('adviser-chat-input');
+            const content = input.value.trim();
+            if (!content || !activeSupervisedProject) return;
+
+            await _supabase.from('messages').insert([{ project_id: activeSupervisedProject.id, sender_id: currentAdviser.id, content: content }]);
+            input.value = '';
+            loadAdviserChatMessages();
+        }
+
+        function switchAdviserTab(tabName) {
+            ['manuscript', 'chat'].forEach(t => {
+                document.getElementById(`content-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).className = "px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-all whitespace-nowrap";
+            });
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).className = "px-4 py-2 text-sm font-medium rounded-xl bg-emerald-600 text-white transition-all whitespace-nowrap";
+        }
+
+        async function handleLogout() {
+            await _supabase.auth.signOut();
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

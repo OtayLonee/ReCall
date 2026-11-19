@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReCall - Login & Registration</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-6 font-sans">
+
+    <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6">
+        
+        <!-- Logo / Header -->
+        <div class="text-center space-y-2">
+            <div class="bg-indigo-600 text-white font-bold h-12 w-12 rounded-2xl flex items-center justify-center text-2xl mx-auto shadow-lg shadow-indigo-500/30">R</div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">Welcome to ReCall</h1>
+            <p id="form-subtitle" class="text-xs text-slate-400">Capstone Collaboration & Management System</p>
+        </div>
+
+        <!-- Mode Toggle Tabs -->
+        <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-medium cursor-pointer">
+            <button type="button" onclick="switchMode('login')" id="tab-login" class="flex-1 py-2.5 rounded-lg bg-indigo-600 text-white transition-all text-center">Sign In</button>
+            <button type="button" onclick="switchMode('register')" id="tab-register" class="flex-1 py-2.5 rounded-lg text-slate-400 hover:text-white transition-all text-center">Create Account</button>
+        </div>
+
+        <!-- Auth Form -->
+        <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+            
+            <!-- Full Name (Registration Only) -->
+            <div id="field-name" class="hidden space-y-1">
+                <label class="block text-xs font-medium text-slate-300">Full Name</label>
+                <input type="text" id="input-name" placeholder="Carl Marcus De Guzman" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div class="space-y-1">
+                <label class="block text-xs font-medium text-slate-300">Email Address</label>
+                <input type="email" id="input-email" required placeholder="carl@domain.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div class="space-y-1">
+                <label class="block text-xs font-medium text-slate-300">Password</label>
+                <input type="password" id="input-password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <!-- Role Selector -->
+            <div class="space-y-1">
+                <label id="role-label" class="block text-xs font-medium text-slate-300">Logging in as:</label>
+                <select id="select-role" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    <option value="student">Student Portal</option>
+                    <option value="adviser">Faculty Adviser Portal</option>
+                </select>
+            </div>
+
+            <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-sm">
+                Sign In
+            </button>
+        </form>
+
+        <div id="error-box" class="hidden p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl text-center"></div>
+
+    </div>
+
+    <!-- Script Controller -->
+    <script>
+        // REPLACE THESE WITH YOUR ACTUAL SUPABASE URL AND ANON KEY
+        const SUPABASE_URL = 'https://wummzhthahqaykskadnu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bW16aHRoYWhxYXlrc2thZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTA3OTksImV4cCI6MjA5OTE4Njc5OX0.zNuWXTw7pRme2zJ7OQNLD53ASW4C75dUwXaOC9cB8yY';
+
+
+        // Safe Supabase Client initialization
+        let _supabase = null;
+        try {
+            if (window.supabase) {
+                _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch (err) {
+            console.error("Supabase initialization failed:", err);
+        }
+
+        let isLoginMode = true;
+
+        function switchMode(mode) {
+            isLoginMode = (mode === 'login');
+            const nameField = document.getElementById('field-name');
+            const roleLabel = document.getElementById('role-label');
+            const subTitle = document.getElementById('form-subtitle');
+            const submitBtn = document.getElementById('submit-btn');
+            const tabLogin = document.getElementById('tab-login');
+            const tabRegister = document.getElementById('tab-register');
+            const errorBox = document.getElementById('error-box');
+
+            errorBox.classList.add('hidden');
+
+            if (isLoginMode) {
+                nameField.classList.add('hidden');
+                roleLabel.innerText = "Logging in as:";
+                subTitle.innerText = "Capstone Collaboration & Management System";
+                submitBtn.innerText = "Sign In";
+                tabLogin.className = "flex-1 py-2.5 rounded-lg bg-indigo-600 text-white transition-all text-center";
+                tabRegister.className = "flex-1 py-2.5 rounded-lg text-slate-400 hover:text-white transition-all text-center";
+            } else {
+                nameField.classList.remove('hidden');
+                roleLabel.innerText = "Account Role:";
+                subTitle.innerText = "Create your account to get started";
+                submitBtn.innerText = "Register Account";
+                tabRegister.className = "flex-1 py-2.5 rounded-lg bg-indigo-600 text-white transition-all text-center";
+                tabLogin.className = "flex-1 py-2.5 rounded-lg text-slate-400 hover:text-white transition-all text-center";
+            }
+        }
+
+        async function handleAuth(event) {
+            event.preventDefault();
+            const email = document.getElementById('input-email').value;
+            const password = document.getElementById('input-password').value;
+            const selectedRole = document.getElementById('select-role').value;
+            const errorBox = document.getElementById('error-box');
+            errorBox.classList.add('hidden');
+
+            if (!_supabase) {
+                errorBox.innerText = "Supabase client not initialized. Check your URL and Key.";
+                errorBox.classList.remove('hidden');
+                return;
+            }
+
+            if (isLoginMode) {
+                const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+                if (error) {
+                    errorBox.innerText = error.message;
+                    errorBox.classList.remove('hidden');
+                    return;
+                }
+
+                const userId = data.user.id;
+                const { data: profile, error: profileError } = await _supabase.from('profiles').select('role').eq('id', userId).single();
+
+                if (profileError || !profile) {
+                    errorBox.innerText = "User profile not found in database.";
+                    errorBox.classList.remove('hidden');
+                    await _supabase.auth.signOut();
+                    return;
+                }
+
+                if (profile.role !== selectedRole) {
+                    errorBox.innerText = `Access Denied: This account is registered as a [${profile.role.toUpperCase()}]. Please select the correct portal.`;
+                    errorBox.classList.remove('hidden');
+                    await _supabase.auth.signOut();
+                    return;
+                }
+
+                if (profile.role === 'adviser') {
+                    window.location.href = 'adviser.html';
+                } else {
+                    window.location.href = 'student.html';
+                }
+
+            } else {
+                // --- REGISTRATION FLOW ---
+                const fullName = document.getElementById('input-name').value;
+
+                const { data, error } = await _supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: { full_name: fullName, role: selectedRole }
+                    }
+                });
+
+                if (error) {
+                    errorBox.innerText = error.message;
+                    errorBox.classList.remove('hidden');
+                    return;
+                }
+
+                alert("Registration successful! You can now sign in.");
+                switchMode('login');
+            }
+        }
+    </script>
+</body>
+</html>
