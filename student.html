@@ -3,19 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReCall - Student Dashboard</title>
-    <!-- Tailwind CSS CDN -->
+    <title>ReCall - Student Workspace</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Supabase JS Client CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Mammoth.js for .docx Word Document Importing with Images/Logos -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://meet.jit.si/external_api.js"></script>
     <style>
-        /* Light Mode & Dark Mode Global Theme Variables */
         body.light-mode { background-color: #f1f5f9; color: #0f172a; }
         body.light-mode .bg-slate-950 { background-color: #f1f5f9 !important; }
         body.light-mode .bg-slate-900 { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
-        body.light-mode .bg-slate-900\/90 { background-color: rgba(255, 255, 255, 0.9) !important; }
         body.light-mode .border-slate-800 { border-color: #cbd5e1 !important; }
         body.light-mode .text-white { color: #0f172a !important; }
         body.light-mode .text-slate-100 { color: #0f172a !important; }
@@ -23,15 +19,14 @@
         body.light-mode .text-slate-400 { color: #64748b !important; }
         body.light-mode .text-slate-500 { color: #94a3b8 !important; }
 
-        /* Google Docs Style Paginated Document Container */
         .document-page-container {
             background-color: #1e293b;
-            padding: 40px 20px;
+            padding: 32px 16px;
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 40px;
+            gap: 32px;
             border-radius: 0.75rem;
             border: 1px solid #334155;
         }
@@ -40,21 +35,22 @@
             border-color: #94a3b8;
         }
 
-        /* Individual Virtual Page (A4 / Letter Sheet Look) */
         .manuscript-page {
             background: #ffffff;
             color: #000000;
             width: 100%;
             max-width: 816px;
             min-height: 1056px;
-            padding: 72px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            padding: 56px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             border-radius: 4px;
             font-family: 'Times New Roman', Times, serif, Georgia;
             font-size: 14pt;
             line-height: 2.0;
-            position: relative;
             outline: none;
+        }
+        @media (max-width: 640px) {
+            .manuscript-page { padding: 24px; font-size: 12pt; }
         }
         .manuscript-page img {
             max-width: 100% !important;
@@ -74,255 +70,479 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex font-sans transition-colors duration-200">
 
-    <!-- Top Navigation Bar -->
-    <header class="w-full py-4 px-6 md:px-8 flex flex-col md:flex-row items-center justify-between border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50 gap-4">
-        <div class="flex items-center space-x-3 cursor-pointer" onclick="returnToHome()">
-            <div class="bg-indigo-600 text-white font-bold h-10 w-10 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30">R</div>
-            <div>
-                <h1 class="text-xl font-bold tracking-tight text-white">ReCall <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-md font-normal ml-2">Student Portal</span></h1>
-                <p id="user-display-email" class="text-xs text-slate-400">Verifying session...</p>
-            </div>
-        </div>
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebar-backdrop" onclick="toggleMobileSidebar(false)" class="hidden fixed inset-0 bg-slate-950/75 z-40 lg:hidden"></div>
 
-        <div class="flex items-center space-x-2">
-            <button onclick="toggleTheme()" id="btn-theme-toggle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">☀️ Light Mode</button>
-            <button onclick="returnToHome()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">🏠 My Projects</button>
-            <button onclick="handleLogout()" class="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-600/30 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all">Sign Out</button>
-        </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="flex-grow p-6 max-w-7xl mx-auto w-full">
-        
-        <!-- VIEW 1: Home Screen (My Projects List) -->
-        <div id="home-projects-view" class="space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                <div>
-                    <h2 class="text-xl font-bold text-white">My Capstone Project Rooms</h2>
-                    <p class="text-xs text-slate-400 mt-0.5">View project rooms you created or rooms where you were invited as a team member.</p>
-                </div>
-                <button onclick="openCreateProjectModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-xs whitespace-nowrap">
-                    + Create Project Room
-                </button>
-            </div>
-
-            <!-- Grid of Project Cards -->
-            <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div class="col-span-full text-center py-12 text-slate-400 text-sm">Loading your project rooms...</div>
-            </div>
-        </div>
-
-        <!-- VIEW 2: Active Project Room Workspace -->
-        <div id="active-project-state" class="hidden space-y-6">
-            
-            <!-- Return to Home Bar -->
-            <div>
-                <button onclick="returnToHome()" class="inline-flex items-center space-x-2 text-xs font-medium text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 px-3.5 py-2 rounded-xl transition-all">
-                    <span>← Back to Home Screen (My Projects)</span>
-                </button>
-            </div>
-
-            <!-- Project Room Header Bar -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <div class="flex items-center space-x-2 mb-1">
-                        <span id="project-status-badge" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-0.5 rounded-full font-medium">Status: Proposal Stage</span>
-                        <span class="text-xs text-slate-400">Room Code: <strong id="project-room-code" class="text-slate-200">RC-2026-XXXX</strong></span>
-                    </div>
-                    <h2 id="project-title-heading" class="text-2xl font-bold text-white">Loading Project Title...</h2>
-                </div>
-                <div>
-                    <span id="user-privilege-badge" class="bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 text-xs px-3 py-1.5 rounded-xl font-semibold">👑 Room Leader</span>
-                </div>
-            </div>
-
-            <!-- Workspace Navigation Tabs -->
-            <div class="flex space-x-2 border-b border-slate-800 pb-2 overflow-x-auto">
-                <button onclick="switchTab('workspace')" id="tab-workspace" class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white transition-all whitespace-nowrap">📄 Document Workspace</button>
-                <button onclick="switchTab('team')" id="tab-team" class="px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-all whitespace-nowrap">👥 Team & Adviser</button>
-                <button onclick="switchTab('chat')" id="tab-chat" class="px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-all whitespace-nowrap">💬 Discussion Chat</button>
-            </div>
-
-            <!-- Tab 1: Paginated Document Workspace with Chapter Outline Sidebar -->
-            <div id="content-workspace" class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-                
-                <!-- Left Column: Chapter Outline (1 Col) -->
-                <div class="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 lg:sticky lg:top-24">
+    <!-- Left Sidebar -->
+    <aside id="left-sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-blue-800 text-white flex flex-col justify-between transform -translate-x-full lg:translate-x-0 transition-transform duration-200 shrink-0 shadow-xl">
+        <div>
+            <div class="p-5 flex items-center justify-between border-b border-blue-700/70">
+                <div class="flex items-center space-x-2.5">
+                    <div class="bg-white/15 h-9 w-9 rounded-lg flex items-center justify-center font-bold text-lg">R</div>
                     <div>
-                        <h3 class="font-bold text-white text-sm">📑 Manuscript Outline</h3>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Click any section to jump straight to it.</p>
+                        <div class="font-bold text-lg leading-none">ReCall</div>
+                        <div class="text-[11px] text-blue-200 mt-1">Student Workspace</div>
                     </div>
-                    <div id="manuscript-outline" class="space-y-1.5 max-h-[450px] overflow-y-auto pr-1">
-                        <p class="text-xs text-slate-500 italic">Outline generates automatically from headings in your document.</p>
+                </div>
+                <button type="button" onclick="toggleMobileSidebar(false)" class="lg:hidden text-blue-200 hover:text-white text-sm px-2 py-1">✕</button>
+            </div>
+
+            <div class="px-4 pt-4">
+                <div class="bg-blue-900/60 border border-blue-600/40 rounded-xl p-3">
+                    <div class="text-[10px] uppercase tracking-wider text-blue-200">Active Room</div>
+                    <div id="sidebar-active-project" class="text-xs font-semibold text-white truncate mt-0.5">No project selected</div>
+                </div>
+            </div>
+
+            <nav class="p-3 space-y-1 mt-1 text-sm">
+                <button type="button" onclick="navigateTo('dashboard')" id="nav-dashboard" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg bg-blue-600 font-medium text-left transition-all">
+                    <span>🏠</span><span>Dashboard</span>
+                </button>
+                <button type="button" onclick="navigateTo('adviser')" id="nav-adviser" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/70 font-medium text-left transition-all">
+                    <span>👨‍🏫</span><span>Adviser Request</span>
+                </button>
+                <button type="button" onclick="navigateTo('meetings')" id="nav-meetings" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/70 font-medium text-left transition-all">
+                    <span>📅</span><span>Meetings</span>
+                </button>
+                <button type="button" onclick="navigateTo('voice')" id="nav-voice" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/70 font-medium text-left transition-all">
+                    <span>🎙️</span><span>Voice Sessions</span>
+                </button>
+                <button type="button" onclick="navigateTo('documents')" id="nav-documents" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/70 font-medium text-left transition-all">
+                    <span>📄</span><span>Documents</span>
+                </button>
+                <button type="button" onclick="navigateTo('ledger')" id="nav-ledger" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/70 font-medium text-left transition-all">
+                    <span>🤖</span><span>AI Discussion Ledger</span>
+                </button>
+                <button type="button" onclick="navigateTo('approvals')" id="nav-approvals" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/70 font-medium text-left transition-all">
+                    <span>✅</span><span>Approval Status</span>
+                </button>
+            </nav>
+        </div>
+
+        <div class="p-3 border-t border-blue-700/70 space-y-1 text-sm">
+            <button type="button" onclick="navigateTo('settings')" id="nav-settings" class="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/70 font-medium text-left transition-all">
+                <span>⚙️</span><span>Settings</span>
+            </button>
+            <button type="button" onclick="handleLogout()" class="w-full flex items-center space-x-3 px-3.5 py-2 rounded-lg text-rose-200 hover:bg-rose-600/30 text-xs font-semibold text-left transition-all">
+                <span>🚪</span><span>Sign Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Right Column -->
+    <div class="flex-1 flex flex-col min-w-0">
+        <header class="h-16 px-4 md:px-8 border-b border-slate-800 bg-slate-900 flex items-center justify-between sticky top-0 z-30">
+            <div class="flex items-center space-x-3 min-w-0">
+                <button type="button" onclick="toggleMobileSidebar(true)" class="lg:hidden bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm">☰</button>
+                <div class="truncate">
+                    <h1 id="topbar-section-title" class="text-base md:text-lg font-bold text-white truncate">Dashboard</h1>
+                    <p id="user-display-email" class="text-[11px] text-slate-400 truncate">Verifying session...</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 shrink-0">
+                <span id="active-room-badge" class="hidden sm:inline-block text-xs bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full font-mono">No Room</span>
+                <button type="button" onclick="toggleTheme()" id="btn-theme-toggle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">☀️ Light</button>
+            </div>
+        </header>
+
+        <div id="status-banner" class="hidden mx-4 md:mx-6 mt-4 px-4 py-2.5 rounded-xl text-xs font-medium border"></div>
+
+        <main class="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto space-y-6">
+
+            <!-- 1. DASHBOARD -->
+            <section id="section-dashboard" class="space-y-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Capstone Project Rooms</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Select a room to activate it across Documents, Voice Sessions, Meetings, and the AI Discussion Ledger.</p>
                     </div>
-                    <div class="pt-2 border-t border-slate-800">
-                        <button onclick="generateOutline()" class="w-full bg-slate-800 hover:bg-slate-700 text-indigo-400 text-xs font-medium py-2 rounded-xl transition-all">
-                            🔄 Refresh Outline
-                        </button>
+                    <button type="button" onclick="openCreateProjectModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 whitespace-nowrap">
+                        + Create Project Room
+                    </button>
+                </div>
+
+                <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div class="col-span-full text-center py-10 text-slate-400 text-sm">Loading project rooms...</div>
+                </div>
+
+                <div id="dashboard-room-details" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-white text-base">Team Members</h3>
+                            <button type="button" onclick="openInviteModal()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-medium">+ Invite by Email</button>
+                        </div>
+                        <div id="member-list" class="space-y-2.5"></div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col h-[380px]">
+                        <h3 class="font-bold text-white text-base mb-2">Group Discussion Chat</h3>
+                        <div id="chat-messages" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3.5 overflow-y-auto space-y-2.5 mb-3"></div>
+                        <form onsubmit="sendChatMessage(event)" class="flex gap-2">
+                            <input type="text" id="chat-input" placeholder="Message your groupmates or adviser..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-xs font-semibold">Send</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. ADVISER REQUEST -->
+            <section id="section-adviser" class="hidden space-y-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Faculty Adviser Supervision</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Request a faculty adviser for your currently selected capstone room.</p>
+                    </div>
+                    <div id="adviser-status-box" class="bg-slate-950 border border-slate-800 rounded-xl p-6 text-center space-y-3">
+                        <p class="text-xs text-slate-400">Select a project room first to manage adviser requests.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. MEETINGS -->
+            <section id="section-meetings" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <h2 class="text-lg font-bold text-white">Schedule Consultation</h2>
+                        <form onsubmit="createMeeting(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">Meeting Title</label>
+                                <input type="text" id="meeting-title" required placeholder="e.g., Chapter 2 Methodology Check" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">Date & Time</label>
+                                <input type="datetime-local" id="meeting-datetime" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">Agenda / Notes</label>
+                                <textarea id="meeting-notes" rows="3" placeholder="Topics or questions for your group / adviser..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white"></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 rounded-xl transition-all">Save Meeting</button>
+                        </form>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <h2 class="text-lg font-bold text-white">Scheduled Consultations & Meetings</h2>
+                        <div id="meetings-list" class="space-y-3">
+                            <p class="text-xs text-slate-500">No meetings scheduled yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. VOICE SESSIONS -->
+            <section id="section-voice" class="hidden space-y-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Live Voice Sessions (Jitsi)</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Start an audio-first Jitsi room for your active project.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="startJitsiSession()" id="btn-start-voice" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all">🎙️ Start Voice Call</button>
+                            <button type="button" onclick="endJitsiSession()" id="btn-end-voice" disabled class="bg-rose-600/20 text-rose-300 border border-rose-500/30 disabled:opacity-40 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all">⏹ End Call</button>
+                        </div>
+                    </div>
+
+                    <div id="jitsi-container" class="w-full min-h-[460px] bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center text-xs text-slate-500">
+                        Click "Start Voice Call" to launch the Jitsi audio room for this project.
                     </div>
                 </div>
 
-                <!-- Right Column: Paginated Google-Docs Style Viewer & Importer (3 Cols) -->
-                <div class="lg:col-span-3 space-y-4">
-                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+                    <h3 class="font-bold text-white text-base">Voice Session History</h3>
+                    <div id="voice-sessions-list" class="space-y-2.5 text-xs text-slate-400">No sessions recorded yet.</div>
+                </div>
+            </section>
+
+            <!-- 5. DOCUMENTS -->
+            <section id="section-documents" class="hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                    <div class="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 lg:sticky lg:top-24">
+                        <div>
+                            <h3 class="font-bold text-white text-sm">📑 Manuscript Outline</h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Click any heading to jump to it.</p>
+                        </div>
+                        <div id="manuscript-outline" class="space-y-1.5 max-h-[420px] overflow-y-auto">
+                            <p class="text-xs text-slate-500 italic">Outline generates from headings.</p>
+                        </div>
+                        <button type="button" onclick="generateOutline()" class="w-full bg-slate-800 hover:bg-slate-700 text-indigo-400 text-xs font-medium py-2 rounded-xl transition-all">🔄 Refresh Outline</button>
+                    </div>
+
+                    <div class="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div>
-                                <h3 class="font-bold text-white text-base">Capstone Manuscript Paginated Viewer</h3>
-                                <p class="text-xs text-slate-400">Accurate Word (.docx) translation with images, logos, and academic formatting.</p>
+                                <h3 class="font-bold text-white text-base">Capstone Manuscript Editor</h3>
+                                <p class="text-xs text-slate-400">Import .docx files with logos/images or edit directly.</p>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <input type="file" id="docx-upload" accept=".docx" class="hidden" onchange="handleDocxUpload(event)" />
-                                <button onclick="document.getElementById('docx-upload').click()" class="bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 text-xs px-3.5 py-2 rounded-xl font-medium transition-all">
-                                    📤 Upload Word (.docx)
-                                </button>
-                                <button onclick="saveDocumentContent(true)" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/20">
-                                    💾 Save Manuscript
-                                </button>
+                                <button type="button" onclick="document.getElementById('docx-upload').click()" class="bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 text-xs px-3 py-2 rounded-xl font-medium">📤 Upload .docx</button>
+                                <button type="button" onclick="saveDocumentContent(true)" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-xl font-medium">💾 Save</button>
                                 <span id="save-status-badge" class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg">🟢 Synced</span>
                             </div>
                         </div>
 
-                        <!-- Paginated Sheet Container -->
-                        <div class="document-page-container" id="paginated-editor-root">
+                        <div class="document-page-container">
                             <div class="manuscript-page" contenteditable="true" id="editable-manuscript-sheet">
                                 <h1 style="text-align: center;">CHAPTER 1</h1>
-                                <h2 style="text-align: center;">Introduction and Background of the Study</h2>
-                                <p>Start typing your capstone paper here, or upload your official Microsoft Word (.docx) document using the button above to render your institutional logos, tables, and formatting...</p>
+                                <h2 style="text-align: center;">Introduction</h2>
+                                <p>Start writing or upload your Word (.docx) manuscript...</p>
                             </div>
                         </div>
                     </div>
                 </div>
+            </section>
 
-            </div>
-
-            <!-- Tab 2: Team & Adviser Management -->
-            <div id="content-team" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 6. AI DISCUSSION LEDGER -->
+            <section id="section-ledger" class="hidden space-y-6">
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-bold text-white text-base">Project Team Members</h3>
-                        <button onclick="openInviteModal()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-medium transition-all">+ Invite by Email</button>
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h2 class="text-xl font-bold text-white">AI Discussion Ledger (Tagalog & English)</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Generates structured summaries, decisions, and action items from recent chat or pasted notes.</p>
+                        </div>
+                        <button type="button" onclick="generateAiLedger()" id="btn-generate-ledger" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 whitespace-nowrap">
+                            ✨ Generate from Recent Chat
+                        </button>
                     </div>
-                    <div id="member-list" class="space-y-3">
-                        <p class="text-xs text-slate-400">Loading members...</p>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Optional Meeting / Voice Notes</label>
+                        <textarea id="ledger-custom-notes" rows="3" placeholder="Paste voice call notes or discussion points in English or Tagalog..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500"></textarea>
+                    </div>
+                </div>
+                <div id="ledger-entries-list" class="space-y-4">
+                    <p class="text-xs text-slate-500">No AI discussion ledgers generated yet.</p>
+                </div>
+            </section>
+
+            <!-- 7. APPROVAL STATUS -->
+            <section id="section-approvals" class="hidden space-y-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-4">
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Adviser Approval & Defense Readiness</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Track your adviser's to-do checklist per project room and mark items accomplished as revisions are completed.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <label for="approval-project-select" class="text-xs text-slate-400">Capstone Project:</label>
+                            <select id="approval-project-select" onchange="handleApprovalProjectDropdown(this.value)"
+                                class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Active Project Defense Readiness Banner -->
+                    <div id="defense-readiness-banner" class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <div class="text-[11px] uppercase tracking-wider text-slate-400">Defense Readiness Status</div>
+                            <div id="defense-status-text" class="text-base font-bold text-white mt-0.5">Select a project room</div>
+                            <div id="defense-progress-meta" class="text-xs text-slate-400 mt-0.5">0 of 0 adviser checklist items verified</div>
+                        </div>
+                        <span id="defense-status-pill" class="self-start sm:self-center text-xs px-3 py-1.5 rounded-full font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                            Pending Review
+                        </span>
+                    </div>
+
+                    <!-- Adviser Checklist Items -->
+                    <div id="approvals-list" class="space-y-3">
+                        <p class="text-xs text-slate-500">No approval records logged for this room yet.</p>
                     </div>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                    <h3 class="font-bold text-white text-base">Faculty Adviser Status</h3>
-                    <div id="adviser-status-box" class="bg-slate-950 p-5 rounded-xl border border-slate-800 text-center space-y-3">
-                        <p class="text-xs text-slate-400">Checking adviser status...</p>
+                <!-- All Student Capstone Rooms Summary -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+                    <h3 class="text-base font-bold text-white">All Your Capstone Projects</h3>
+                    <p class="text-xs text-slate-400">Since you can start more than one capstone project, use this summary to jump between rooms and check defense readiness.</p>
+                    <div id="all-projects-approval-summary" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1"></div>
+                </div>
+            </section>
+
+            <!-- 8. SETTINGS -->
+            <section id="section-settings" class="hidden space-y-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 max-w-xl">
+                    <h2 class="text-xl font-bold text-white">Workspace Settings</h2>
+                    <div class="space-y-1 text-sm">
+                        <p class="text-slate-400 text-xs">Signed in as:</p>
+                        <p id="settings-user-email" class="font-semibold text-white"></p>
+                    </div>
+                    <div class="pt-3 flex items-center justify-between border-t border-slate-800">
+                        <div>
+                            <p class="text-sm font-medium text-white">Appearance Theme</p>
+                            <p class="text-xs text-slate-400">Switch between Dark and Light mode</p>
+                        </div>
+                        <button type="button" onclick="toggleTheme()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold px-4 py-2 rounded-xl">Toggle Theme</button>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Tab 3: Chat Room -->
-            <div id="content-chat" class="hidden">
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col h-[500px]">
-                    <h3 class="font-bold text-white text-base mb-2">Project Discussion Chat</h3>
-                    <div id="chat-messages" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl p-4 overflow-y-auto space-y-3 mb-4">
-                        <p class="text-xs text-slate-500 text-center">Loading messages...</p>
-                    </div>
-                    <form onsubmit="sendChatMessage(event)" class="flex gap-2">
-                        <input type="text" id="chat-input" placeholder="Type a message..." class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium text-sm transition-all">Send</button>
-                    </form>
-                </div>
-            </div>
+        </main>
+    </div>
 
-        </div>
-    </main>
-
-    <!-- Modal 1: Create Project Room -->
+    <!-- Modals -->
     <div id="modal-create-project" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div>
-                <h3 class="font-bold text-white text-lg">Create Project Room</h3>
-                <p class="text-xs text-slate-400 mt-1">Enter your official capstone project title to generate a room code.</p>
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1.5">Capstone Project Title</label>
-                <input type="text" id="input-project-title" placeholder="e.g., ReCall: An Integrated Capstone System" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-            </div>
-            <div class="flex justify-end space-x-2 pt-2">
-                <button type="button" onclick="closeCreateProjectModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl font-medium hover:bg-slate-700 transition-all">Cancel</button>
-                <button type="button" onclick="submitCreateProjectRoom()" id="btn-submit-project" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/30">Create Room</button>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <h3 class="font-bold text-white text-lg">Create Project Room</h3>
+            <input type="text" id="input-project-title" placeholder="e.g., ReCall Capstone System" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white">
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="closeCreateProjectModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl">Cancel</button>
+                <button type="button" onclick="submitCreateProjectRoom()" id="btn-submit-project" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-semibold">Create</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal 2: Invite Groupmate by Email -->
     <div id="modal-invite-member" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div>
-                <h3 class="font-bold text-white text-lg">Invite Groupmate</h3>
-                <p class="text-xs text-slate-400 mt-1">Enter the registered student email of the groupmate you want to add.</p>
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1.5">Student Email Address</label>
-                <input type="email" id="input-invite-email" placeholder="groupmate@domain.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-            </div>
-            <div class="flex justify-end space-x-2 pt-2">
-                <button type="button" onclick="closeInviteModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl font-medium hover:bg-slate-700 transition-all">Cancel</button>
-                <button type="button" onclick="submitInviteMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/30">Add to Room</button>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <h3 class="font-bold text-white text-lg">Invite Groupmate</h3>
+            <input type="email" id="input-invite-email" placeholder="groupmate@domain.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white">
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="closeInviteModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl">Cancel</button>
+                <button type="button" onclick="submitInviteMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-semibold">Add Member</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal 3: Request Adviser -->
     <div id="modal-adviser" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4">
             <h3 class="font-bold text-white text-lg">Request Faculty Adviser</h3>
-            <p class="text-xs text-slate-400">Select an available faculty adviser registered in ReCall.</p>
-            <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Registered Faculty Advisers</label>
-                <select id="select-adviser" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
-                    <option value="">Loading advisers...</option>
-                </select>
-            </div>
-            <div class="flex justify-end space-x-2 pt-2">
-                <button onclick="closeAdviserModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl font-medium hover:bg-slate-700 transition-all">Cancel</button>
-                <button onclick="submitAdviserRequest()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/30">Send Request</button>
+            <select id="select-adviser" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white"></select>
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="closeAdviserModal()" class="bg-slate-800 text-slate-300 text-xs px-4 py-2.5 rounded-xl">Cancel</button>
+                <button type="button" onclick="submitAdviserRequest()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-semibold">Send Request</button>
             </div>
         </div>
     </div>
 
-    <!-- Script Controller -->
     <script>
         const SUPABASE_URL = 'https://wummzhthahqaykskadnu.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1bW16aHRoYWhxYXlrc2thZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTA3OTksImV4cCI6MjA5OTE4Njc5OX0.zNuWXTw7pRme2zJ7OQNLD53ASW4C75dUwXaOC9cB8yY';
 
+        const SECTION_TITLES = {
+            dashboard: 'Dashboard',
+            adviser: 'Adviser Request',
+            meetings: 'Meetings',
+            voice: 'Voice Sessions',
+            documents: 'Documents',
+            ledger: 'AI Discussion Ledger',
+            approvals: 'Approval Status',
+            settings: 'Settings'
+        };
 
-        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+        let _supabase = null;
         let currentUser = null;
-        let userMemberships = [];
+        let userProjects = [];
         let activeProject = null;
         let isCurrentLeader = false;
         let autoSaveTimer = null;
         let isLightMode = false;
+        let jitsiApi = null;
+        let currentVoiceSessionId = null;
+
+        function escapeApprovalHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function showStatus(msg, isError = false) {
+            const banner = document.getElementById('status-banner');
+            banner.classList.remove('hidden');
+            banner.textContent = msg;
+            banner.className = isError
+                ? "mx-4 md:mx-6 mt-4 px-4 py-2.5 rounded-xl text-xs font-medium border bg-rose-500/15 text-rose-300 border-rose-500/30"
+                : "mx-4 md:mx-6 mt-4 px-4 py-2.5 rounded-xl text-xs font-medium border bg-indigo-500/15 text-indigo-300 border-indigo-500/30";
+        }
+
+        function navigateTo(sectionKey) {
+            if (!SECTION_TITLES[sectionKey]) return;
+            if (sectionKey !== 'voice' && jitsiApi) {
+                endJitsiSession();
+            }
+            Object.keys(SECTION_TITLES).forEach(key => {
+                const sec = document.getElementById(`section-${key}`);
+                const nav = document.getElementById(`nav-${key}`);
+                if (sec) sec.classList.add('hidden');
+                if (nav) nav.className = "w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/70 font-medium text-left transition-all";
+            });
+
+            document.getElementById(`section-${sectionKey}`).classList.remove('hidden');
+            document.getElementById(`nav-${sectionKey}`).className = "w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-lg bg-blue-600 font-medium text-left transition-all";
+            document.getElementById('topbar-section-title').innerText = SECTION_TITLES[sectionKey];
+            toggleMobileSidebar(false);
+
+            if (activeProject && _supabase) {
+                if (sectionKey === 'adviser') loadAdviserStatus();
+                if (sectionKey === 'meetings') loadMeetings();
+                if (sectionKey === 'voice') loadVoiceSessions();
+                if (sectionKey === 'documents') generateOutline();
+                if (sectionKey === 'ledger') loadAiLedgers();
+                if (sectionKey === 'approvals') loadApprovals();
+            } else if (sectionKey === 'approvals' && _supabase) {
+                loadApprovals();
+            }
+        }
+
+        function toggleMobileSidebar(open) {
+            const sidebar = document.getElementById('left-sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if (open) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function toggleTheme() {
+            isLightMode = !isLightMode;
+            const btn = document.getElementById('btn-theme-toggle');
+            if (isLightMode) {
+                document.body.classList.add('light-mode');
+                btn.innerText = "🌙 Dark";
+            } else {
+                document.body.classList.remove('light-mode');
+                btn.innerText = "☀️ Light";
+            }
+        }
 
         window.addEventListener('DOMContentLoaded', async () => {
-            // Setup auto-save listener on the editable manuscript sheet
+            if (!SUPABASE_URL.startsWith('http') || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
+                showStatus("Set your real SUPABASE_URL and SUPABASE_ANON_KEY in student.html before testing.", true);
+                document.getElementById('user-display-email').innerText = "Supabase config missing";
+                return;
+            }
+
+            _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
             const sheet = document.getElementById('editable-manuscript-sheet');
             sheet.addEventListener('input', () => {
                 if (!activeProject) return;
-                document.getElementById('save-status-badge').innerText = "⏳ Saving...";
-                document.getElementById('save-status-badge').className = "text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1.5 rounded-lg";
+                const badge = document.getElementById('save-status-badge');
+                badge.innerText = "⏳ Saving...";
+                badge.className = "text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1.5 rounded-lg";
                 clearTimeout(autoSaveTimer);
                 autoSaveTimer = setTimeout(() => saveDocumentContent(false), 1500);
             });
 
-            const { data: { session } } = await _supabase.auth.getSession();
-            if (!session) {
+            const { data: { session }, error: sessionErr } = await _supabase.auth.getSession();
+            if (sessionErr || !session) {
                 window.location.href = 'index.html';
                 return;
             }
 
-            const { data: profile } = await _supabase.from('profiles').select('role').eq('id', session.user.id).single();
-            if (!profile || profile.role !== 'student') {
-                alert("Unauthorized: This page is restricted to students only.");
+            const { data: profile, error: profErr } = await _supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .single();
+
+            if (profErr || !profile || profile.role !== 'student') {
+                alert("Unauthorized: Student portal only.");
                 await _supabase.auth.signOut();
                 window.location.href = 'index.html';
                 return;
@@ -330,313 +550,277 @@
 
             currentUser = session.user;
             document.getElementById('user-display-email').innerText = currentUser.email;
+            document.getElementById('settings-user-email').innerText = currentUser.email;
 
             await loadAllUserProjects();
         });
 
-        // --- THEME TOGGLE ---
-        function toggleTheme() {
-            isLightMode = !isLightMode;
-            const body = document.body;
-            const btn = document.getElementById('btn-theme-toggle');
-
-            if (isLightMode) {
-                body.classList.add('light-mode');
-                btn.innerText = "🌙 Dark Mode";
-                btn.className = "bg-slate-200 hover:bg-slate-300 text-slate-800 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all";
-            } else {
-                body.classList.remove('light-mode');
-                btn.innerText = "☀️ Light Mode";
-                btn.className = "bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all";
+        window.addEventListener('beforeunload', () => {
+            if (jitsiApi) {
+                try { jitsiApi.dispose(); } catch (_) {}
+                jitsiApi = null;
             }
-        }
+        });
 
-        // --- MANUSCRIPT OUTLINE GENERATOR ---
-        function generateOutline() {
-            const outlineContainer = document.getElementById('manuscript-outline');
-            const sheet = document.getElementById('editable-manuscript-sheet');
-            if (!sheet) return;
-
-            const headings = sheet.querySelectorAll('h1, h2, h3');
-            if (headings.length === 0) {
-                outlineContainer.innerHTML = '<p class="text-xs text-slate-500 italic">No headings found. Use Heading styles in the editor to build your outline.</p>';
-                return;
-            }
-
-            outlineContainer.innerHTML = '';
-            headings.forEach((heading, idx) => {
-                const text = heading.innerText.trim();
-                if (!text) return;
-                heading.id = `section-${idx}`;
-                const indent = heading.tagName === 'H2' ? 'ml-3 text-[11px]' : (heading.tagName === 'H3' ? 'ml-6 text-[10px]' : 'text-xs font-semibold');
-                
-                outlineContainer.innerHTML += `
-                    <button onclick="jumpToSection('section-${idx}')" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-all truncate ${indent}">
-                        📌 ${text}
-                    </button>
-                `;
-            });
-        }
-
-        function jumpToSection(sectionId) {
-            const targetElement = document.getElementById(sectionId);
-            if (targetElement) {
-                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-
-        // --- LOAD ALL PROJECTS ---
         async function loadAllUserProjects() {
-            const { data: memberships, error } = await _supabase
+            const grid = document.getElementById('projects-grid');
+            if (!_supabase || !currentUser) return;
+
+            const { data: memberships, error: memErr } = await _supabase
                 .from('project_members')
                 .select('project_id, is_leader, projects(*)')
                 .eq('user_id', currentUser.id);
 
-            const grid = document.getElementById('projects-grid');
+            if (memErr) {
+                console.error("Error loading project_members:", memErr);
+                showStatus("Error loading project memberships: " + memErr.message, true);
+            }
 
-            if (error || !memberships || memberships.length === 0) {
-                userMemberships = [];
+            const combined = [];
+            const seenIds = new Set();
+
+            (memberships || []).forEach(m => {
+                if (m.projects && !seenIds.has(m.projects.id)) {
+                    seenIds.add(m.projects.id);
+                    combined.push({ project: m.projects, is_leader: !!m.is_leader });
+                }
+            });
+
+            const { data: ledProjects, error: ledErr } = await _supabase
+                .from('projects')
+                .select('*')
+                .eq('leader_id', currentUser.id);
+
+            if (ledErr) {
+                console.error("Error loading led projects:", ledErr);
+            }
+
+            (ledProjects || []).forEach(p => {
+                if (!seenIds.has(p.id)) {
+                    seenIds.add(p.id);
+                    combined.push({ project: p, is_leader: true });
+                }
+            });
+
+            userProjects = combined;
+
+            if (userProjects.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
-                        <div class="text-4xl mb-3">📂</div>
-                        <h3 class="text-lg font-bold text-white mb-1">No Project Rooms Yet</h3>
-                        <p class="text-xs text-slate-400 mb-5">Create a new project room or wait for a group leader to invite you using your email.</p>
-                        <button onclick="openCreateProjectModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-xl transition-all text-xs">
-                            + Create Your First Project Room
-                        </button>
+                    <div class="col-span-full bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center space-y-3">
+                        <h3 class="text-base font-bold text-white">No Project Rooms Found</h3>
+                        <p class="text-xs text-slate-400">Create a new project room or verify your project_members rows in Supabase.</p>
+                        <button type="button" onclick="openCreateProjectModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl">+ Create Project Room</button>
                     </div>
                 `;
+                populateApprovalProjectDropdown();
                 return;
             }
 
-            userMemberships = memberships;
             grid.innerHTML = '';
-
-            memberships.forEach((m, index) => {
-                const proj = m.projects;
-                if (!proj) return;
-
-                const roleBadge = m.is_leader 
-                    ? `<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">👑 Created by You (Leader)</span>`
-                    : `<span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">👤 Invited Member</span>`;
-
+            userProjects.forEach((entry, idx) => {
+                const proj = entry.project;
+                const isSelected = activeProject && activeProject.id === proj.id;
                 grid.innerHTML += `
-                    <div class="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col justify-between space-y-5 transition-all shadow-lg">
-                        <div class="space-y-2.5">
-                            <div class="flex items-center justify-between gap-2">
-                                ${roleBadge}
-                                <span class="text-[11px] font-mono text-slate-500">${proj.room_code}</span>
+                    <div class="bg-slate-900 border ${isSelected ? 'border-indigo-500' : 'border-slate-800'} rounded-2xl p-5 flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1.5">
+                                <span>${entry.is_leader ? '👑 Leader' : '👤 Member'}</span>
+                                <span class="font-mono">${proj.room_code || ''}</span>
                             </div>
-                            <h3 class="text-base font-bold text-white leading-snug">${proj.title}</h3>
-                            <p class="text-xs text-slate-400">Status: <span class="text-emerald-400">${proj.status}</span></p>
+                            <h3 class="text-base font-bold text-white">${proj.title}</h3>
                         </div>
-                        <button onclick="openProjectRoom(${index})" class="w-full bg-slate-800 hover:bg-indigo-600 text-white text-xs font-semibold py-2.5 rounded-xl transition-all">
-                            Open Project Room →
+                        <button type="button" onclick="selectActiveProject(${idx})" class="w-full ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-800 hover:bg-indigo-600 text-white'} text-xs font-semibold py-2.5 rounded-xl transition-all">
+                            ${isSelected ? '✓ Active Room' : 'Select Room'}
+                        </button>
+                    </div>
+                `;
+            });
+
+            if (!activeProject && userProjects[0]) {
+                selectActiveProject(0);
+            } else {
+                populateApprovalProjectDropdown();
+            }
+        }
+
+        function selectActiveProject(index) {
+            const entry = userProjects[index];
+            if (!entry || !entry.project) return;
+
+            if (jitsiApi) {
+                endJitsiSession();
+            }
+
+            activeProject = entry.project;
+            isCurrentLeader = entry.is_leader;
+
+            document.getElementById('sidebar-active-project').innerText = `${activeProject.title} (${activeProject.room_code || ''})`;
+            const badge = document.getElementById('active-room-badge');
+            badge.innerText = activeProject.room_code || 'Active';
+            badge.classList.remove('hidden');
+
+            document.getElementById('dashboard-room-details').classList.remove('hidden');
+            document.getElementById('editable-manuscript-sheet').innerHTML =
+                activeProject.document_content || '<h1 style="text-align: center;">CHAPTER 1</h1><p>Start writing your capstone paper...</p>';
+
+            populateApprovalProjectDropdown();
+            renderProjectCardsHighlight();
+            loadTeamMembers();
+            loadChatMessages();
+            generateOutline();
+        }
+
+        function renderProjectCardsHighlight() {
+            const grid = document.getElementById('projects-grid');
+            if (!userProjects.length || !grid.children.length) return;
+            grid.innerHTML = '';
+            userProjects.forEach((entry, idx) => {
+                const proj = entry.project;
+                const isSelected = activeProject && activeProject.id === proj.id;
+                grid.innerHTML += `
+                    <div class="bg-slate-900 border ${isSelected ? 'border-indigo-500' : 'border-slate-800'} rounded-2xl p-5 flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1.5">
+                                <span>${entry.is_leader ? '👑 Leader' : '👤 Member'}</span>
+                                <span class="font-mono">${proj.room_code || ''}</span>
+                            </div>
+                            <h3 class="text-base font-bold text-white">${proj.title}</h3>
+                        </div>
+                        <button type="button" onclick="selectActiveProject(${idx})" class="w-full ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-800 hover:bg-indigo-600 text-white'} text-xs font-semibold py-2.5 rounded-xl transition-all">
+                            ${isSelected ? '✓ Active Room' : 'Select Room'}
                         </button>
                     </div>
                 `;
             });
         }
 
-        function openProjectRoom(index) {
-            const membership = userMemberships[index];
-            if (!membership || !membership.projects) return;
-
-            activeProject = membership.projects;
-            isCurrentLeader = membership.is_leader;
-
-            document.getElementById('home-projects-view').classList.add('hidden');
-            document.getElementById('active-project-state').classList.remove('hidden');
-
-            document.getElementById('project-title-heading').innerText = activeProject.title;
-            document.getElementById('project-room-code').innerText = activeProject.room_code;
-            document.getElementById('project-status-badge').innerText = `Status: ${activeProject.status}`;
-            document.getElementById('user-privilege-badge').innerText = isCurrentLeader ? "👑 Room Leader" : "👤 Team Member";
-
-            const sheet = document.getElementById('editable-manuscript-sheet');
-            sheet.innerHTML = activeProject.document_content || '<h1 style="text-align: center;">CHAPTER 1</h1><p>Start typing your capstone paper here...</p>';
-            document.getElementById('save-status-badge').innerText = "🟢 Synced";
-
-            generateOutline();
-            switchTab('workspace');
-            loadTeamMembers();
-            loadAdviserStatus();
-            loadChatMessages();
+        function openCreateProjectModal() {
+            if (!_supabase || !currentUser) {
+                showStatus("Please wait for session verification or check Supabase keys.", true);
+                return;
+            }
+            document.getElementById('modal-create-project').classList.remove('hidden');
+            document.getElementById('input-project-title').focus();
         }
 
-        function returnToHome() {
-            activeProject = null;
-            document.getElementById('active-project-state').classList.add('hidden');
-            document.getElementById('home-projects-view').classList.remove('hidden');
-            loadAllUserProjects();
+        function closeCreateProjectModal() {
+            document.getElementById('modal-create-project').classList.add('hidden');
+            document.getElementById('input-project-title').value = '';
         }
-
-        // --- CREATE PROJECT MODAL ---
-        function openCreateProjectModal() { document.getElementById('modal-create-project').classList.remove('hidden'); document.getElementById('input-project-title').focus(); }
-        function closeCreateProjectModal() { document.getElementById('modal-create-project').classList.add('hidden'); document.getElementById('input-project-title').value = ''; }
 
         async function submitCreateProjectRoom() {
             const title = document.getElementById('input-project-title').value.trim();
-            if (!title) { alert("Please enter a project title."); return; }
-
-            const submitBtn = document.getElementById('btn-submit-project');
-            submitBtn.innerText = "Creating..."; submitBtn.disabled = true;
+            if (!title) {
+                alert("Please enter a project title.");
+                return;
+            }
+            const btn = document.getElementById('btn-submit-project');
+            btn.disabled = true;
+            btn.innerText = "Creating...";
 
             const roomCode = 'RC-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
 
-            const { data: projData, error: projError } = await _supabase
+            const { data: projData, error } = await _supabase
                 .from('projects')
-                .insert([{ title: title, room_code: roomCode, leader_id: currentUser.id }])
+                .insert([{ title, room_code: roomCode, leader_id: currentUser.id }])
                 .select()
                 .single();
 
-            if (projError) {
-                alert("Error creating project: " + projError.message);
-                submitBtn.innerText = "Create Room"; submitBtn.disabled = false;
+            if (error) {
+                console.error("Create project error:", error);
+                alert("Could not create project: " + error.message);
+                btn.disabled = false;
+                btn.innerText = "Create";
                 return;
             }
 
-            await _supabase.from('project_members').insert([{ project_id: projData.id, user_id: currentUser.id, is_leader: true }]);
+            const { error: memErr } = await _supabase
+                .from('project_members')
+                .insert([{ project_id: projData.id, user_id: currentUser.id, is_leader: true }]);
 
-            submitBtn.innerText = "Create Room"; submitBtn.disabled = false;
-            closeCreateProjectModal();
-            loadAllUserProjects();
-        }
-
-        // --- ENHANCED WORD DOCUMENT UPLOAD PARSER WITH IMAGES & LOGOS ---
-        function handleDocxUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(loadEvent) {
-                const arrayBuffer = loadEvent.target.result;
-
-                const options = {
-                    convertImage: mammoth.images.imgElement(function(image) {
-                        return image.read("base64").then(function(imageBuffer) {
-                            return {
-                                src: "data:" + image.contentType + ";base64," + imageBuffer
-                            };
-                        });
-                    })
-                };
-
-                mammoth.convertToHtml({ arrayBuffer: arrayBuffer }, options)
-                    .then(function(result) {
-                        const sheet = document.getElementById('editable-manuscript-sheet');
-                        sheet.innerHTML = result.value;
-                        saveDocumentContent(true);
-                        generateOutline();
-                        alert("Word document, logos, and formatting imported successfully!");
-                    })
-                    .catch(function(err) {
-                        console.error(err);
-                        alert("Failed to parse Word document. Ensure it is a valid .docx file.");
-                    });
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        async function saveDocumentContent(showAlert) {
-            if (!activeProject) return;
-            const sheet = document.getElementById('editable-manuscript-sheet');
-            const htmlContent = sheet.innerHTML;
-
-            const { error } = await _supabase
-                .from('projects')
-                .update({ document_content: htmlContent })
-                .eq('id', activeProject.id);
-
-            if (!error) {
-                activeProject.document_content = htmlContent;
-                document.getElementById('save-status-badge').innerText = "🟢 Synced";
-                document.getElementById('save-status-badge').className = "text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg";
-                generateOutline();
-                if (showAlert) alert("Manuscript saved to cloud!");
+            if (memErr) {
+                console.error("Create member error:", memErr);
             }
+
+            btn.disabled = false;
+            btn.innerText = "Create";
+            closeCreateProjectModal();
+            activeProject = projData;
+            await loadAllUserProjects();
+            showStatus(`Created room "${projData.title}" (${projData.room_code}).`);
         }
 
-        // --- TEAM MEMBERS ---
         async function loadTeamMembers() {
+            if (!activeProject) return;
             const { data: members } = await _supabase
                 .from('project_members')
                 .select('is_leader, profiles(full_name, email)')
                 .eq('project_id', activeProject.id);
 
-            const listContainer = document.getElementById('member-list');
-            if (!members) return;
-
-            listContainer.innerHTML = '';
-            members.forEach(m => {
-                listContainer.innerHTML += `
+            const container = document.getElementById('member-list');
+            container.innerHTML = '';
+            (members || []).forEach(m => {
+                container.innerHTML += `
                     <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                        <div class="flex items-center space-x-3">
-                            <div class="h-8 w-8 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
-                                ${m.profiles.full_name.substring(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-white">${m.profiles.full_name}</p>
-                                <p class="text-[11px] text-slate-400">${m.profiles.email || ''}</p>
-                            </div>
+                        <div>
+                            <p class="text-sm font-medium text-white">${m.profiles?.full_name || 'Member'}</p>
+                            <p class="text-[11px] text-slate-400">${m.profiles?.email || ''}</p>
                         </div>
-                        ${m.is_leader ? '<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] px-2 py-0.5 rounded-md font-semibold">👑 Leader</span>' : '<span class="text-xs text-slate-400">Member</span>'}
+                        <span class="text-xs text-slate-400">${m.is_leader ? '👑 Leader' : 'Member'}</span>
                     </div>
                 `;
             });
         }
 
-        function openInviteModal() { document.getElementById('modal-invite-member').classList.remove('hidden'); document.getElementById('input-invite-email').focus(); }
+        function openInviteModal() { document.getElementById('modal-invite-member').classList.remove('hidden'); }
         function closeInviteModal() { document.getElementById('modal-invite-member').classList.add('hidden'); document.getElementById('input-invite-email').value = ''; }
 
         async function submitInviteMember() {
+            if (!activeProject) return;
             const email = document.getElementById('input-invite-email').value.trim();
             if (!email) return;
 
-            const { data: studentProfile, error } = await _supabase
-                .from('profiles').select('id, role, full_name').eq('email', email).single();
+            const { data: prof } = await _supabase.from('profiles').select('id, role, full_name').eq('email', email).single();
+            if (!prof || prof.role !== 'student') { alert("Student account not found."); return; }
 
-            if (error || !studentProfile) { alert("Student not found. Make sure your groupmate has registered an account first."); return; }
-            if (studentProfile.role !== 'student') { alert("That email belongs to a Faculty Adviser, not a student."); return; }
-
-            const { error: insertError } = await _supabase
-                .from('project_members').insert([{ project_id: activeProject.id, user_id: studentProfile.id, is_leader: false }]);
-
-            if (insertError) { alert("Could not add member (they may already be in the room)."); return; }
+            const { error } = await _supabase.from('project_members').insert([{ project_id: activeProject.id, user_id: prof.id, is_leader: false }]);
+            if (error) { alert("Could not add member: " + error.message); return; }
 
             closeInviteModal();
-            alert(`${studentProfile.full_name} has been added to your project room!`);
             loadTeamMembers();
         }
 
-        // --- ADVISER STATUS ---
         async function loadAdviserStatus() {
-            const statusBox = document.getElementById('adviser-status-box');
+            if (!activeProject) return;
+            const box = document.getElementById('adviser-status-box');
 
             if (activeProject.adviser_id) {
                 const { data: adv } = await _supabase.from('profiles').select('full_name, email').eq('id', activeProject.adviser_id).single();
-                statusBox.innerHTML = `
-                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-3 py-1 rounded-full font-medium">✅ Assigned Adviser</span>
-                    <p class="text-sm font-bold text-white mt-2">${adv ? adv.full_name : 'Faculty Adviser'}</p>
-                    <p class="text-xs text-slate-400">${adv ? adv.email : ''}</p>
+                box.innerHTML = `
+                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-3 py-1 rounded-full">✅ Assigned Adviser</span>
+                    <p class="text-base font-bold text-white mt-2">${adv?.full_name || 'Faculty Adviser'}</p>
+                    <p class="text-xs text-slate-400">${adv?.email || ''}</p>
                 `;
                 return;
             }
 
             const { data: req } = await _supabase
-                .from('adviser_requests').select('status, profiles(full_name)').eq('project_id', activeProject.id).eq('status', 'pending').single();
+                .from('adviser_requests')
+                .select('status, adviser_id')
+                .eq('project_id', activeProject.id)
+                .eq('status', 'pending')
+                .maybeSingle();
 
             if (req) {
-                statusBox.innerHTML = `
-                    <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-3 py-1 rounded-full font-medium">⏳ Request Pending</span>
-                    <p class="text-xs text-slate-300 mt-2">Waiting for <strong>${req.profiles.full_name}</strong> to accept your supervision request.</p>
+                const { data: adv } = await _supabase.from('profiles').select('full_name').eq('id', req.adviser_id).single();
+                box.innerHTML = `
+                    <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-3 py-1 rounded-full">⏳ Request Pending</span>
+                    <p class="text-xs text-slate-300 mt-2">Waiting for <strong>${adv?.full_name || 'Faculty Adviser'}</strong> to respond.</p>
                 `;
             } else {
-                statusBox.innerHTML = `
-                    <p class="text-xs text-slate-400 mb-3">No adviser assigned or requested yet.</p>
-                    <button onclick="openAdviserModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-4 py-2.5 rounded-xl transition-all">
-                        Find & Request Adviser
-                    </button>
+                box.innerHTML = `
+                    <p class="text-xs text-slate-400">No faculty adviser assigned yet for <strong>${activeProject.title}</strong>.</p>
+                    <button type="button" onclick="openAdviserModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl">Find & Request Adviser</button>
                 `;
             }
         }
@@ -644,29 +828,16 @@
         async function openAdviserModal() {
             document.getElementById('modal-adviser').classList.remove('hidden');
             const select = document.getElementById('select-adviser');
-            select.innerHTML = '<option value="">Fetching advisers...</option>';
+            select.innerHTML = '<option value="">Loading advisers...</option>';
 
-            const { data: advisers, error } = await _supabase
-                .from('profiles')
-                .select('id, full_name, email, role')
-                .ilike('role', 'adviser');
-
-            if (error) {
-                console.error("Failed to fetch advisers:", error);
-                select.innerHTML = '<option value="">Error loading advisers (check console)</option>';
+            const { data: advisers, error } = await _supabase.from('profiles').select('id, full_name, email').ilike('role', 'adviser');
+            if (error || !advisers || advisers.length === 0) {
+                select.innerHTML = '<option value="">No advisers available</option>';
                 return;
             }
-
-            if (!advisers || advisers.length === 0) {
-                select.innerHTML = '<option value="">No faculty advisers registered yet</option>';
-                return;
-            }
-
             select.innerHTML = '';
-            advisers.forEach(adv => {
-                const labelName = adv.full_name || 'Unnamed Adviser';
-                const labelEmail = adv.email ? ` (${adv.email})` : '';
-                select.innerHTML += `<option value="${adv.id}">${labelName}${labelEmail}</option>`;
+            advisers.forEach(a => {
+                select.innerHTML += `<option value="${a.id}">${a.full_name} (${a.email})</option>`;
             });
         }
 
@@ -674,61 +845,540 @@
 
         async function submitAdviserRequest() {
             const adviserId = document.getElementById('select-adviser').value;
-            if (!adviserId) return;
-
+            if (!adviserId || !activeProject) return;
             const { error } = await _supabase.from('adviser_requests').insert([{ project_id: activeProject.id, adviser_id: adviserId, status: 'pending' }]);
             if (error) { alert("Error sending request: " + error.message); return; }
-
             closeAdviserModal();
-            alert("Adviser request sent successfully!");
             loadAdviserStatus();
         }
 
-        // --- CHAT ---
-        async function loadChatMessages() {
-            const { data: messages } = await _supabase
-                .from('messages').select('content, created_at, profiles(full_name)').eq('project_id', activeProject.id).order('created_at', { ascending: true });
+        async function createMeeting(e) {
+            e.preventDefault();
+            if (!activeProject) { alert("Select a project room first."); return; }
+            const title = document.getElementById('meeting-title').value.trim();
+            const scheduledFor = document.getElementById('meeting-datetime').value;
+            const notes = document.getElementById('meeting-notes').value.trim();
 
-            const chatContainer = document.getElementById('chat-messages');
-            if (!messages || messages.length === 0) { chatContainer.innerHTML = '<p class="text-xs text-slate-500 text-center">No messages yet. Start the conversation!</p>'; return; }
+            const { error } = await _supabase.from('meetings').insert([{
+                project_id: activeProject.id,
+                title,
+                scheduled_for: new Date(scheduledFor).toISOString(),
+                notes,
+                created_by: currentUser.id
+            }]);
 
-            chatContainer.innerHTML = '';
-            messages.forEach(msg => {
-                chatContainer.innerHTML += `
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-slate-500 mb-1">${msg.profiles.full_name} • ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl max-w-md text-sm text-slate-200">
-                            ${msg.content}
+            if (error) { alert("Could not save meeting: " + error.message); return; }
+            e.target.reset();
+            loadMeetings();
+        }
+
+        async function loadMeetings() {
+            if (!activeProject) return;
+            const { data: meetings } = await _supabase
+                .from('meetings')
+                .select('*')
+                .eq('project_id', activeProject.id)
+                .order('scheduled_for', { ascending: true });
+
+            const list = document.getElementById('meetings-list');
+            if (!meetings || meetings.length === 0) {
+                list.innerHTML = '<p class="text-xs text-slate-500">No meetings scheduled for this project.</p>';
+                return;
+            }
+
+            list.innerHTML = '';
+            meetings.forEach(m => {
+                list.innerHTML += `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                        <div class="flex justify-between items-start gap-2">
+                            <h4 class="font-bold text-white text-sm">${m.title}</h4>
+                            <span class="text-xs text-indigo-400">${new Date(m.scheduled_for).toLocaleString()}</span>
                         </div>
+                        <p class="text-xs text-slate-400 mt-1">${m.notes || 'No notes provided.'}</p>
                     </div>
                 `;
             });
-            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        async function sendChatMessage(event) {
-            event.preventDefault();
+        // =========================================================================
+        // JITSI VOICE SESSIONS
+        // =========================================================================
+        async function startJitsiSession() {
+            if (!activeProject) { alert("Select a project room first."); return; }
+            if (jitsiApi) return;
+
+            if (typeof window.JitsiMeetExternalAPI !== 'function') {
+                alert("Jitsi External API failed to load. Check your network connection and refresh.");
+                return;
+            }
+
+            const startBtn = document.getElementById('btn-start-voice');
+            startBtn.disabled = true;
+
+            const safeSlug = `${(activeProject.room_code || 'room').toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now()}`;
+            const { data: sessionRow, error } = await _supabase
+                .from('voice_sessions')
+                .insert([{ project_id: activeProject.id, room_name: safeSlug, status: 'active', started_by: currentUser.id }])
+                .select()
+                .single();
+
+            if (error) {
+                startBtn.disabled = false;
+                alert("Could not log voice session: " + error.message);
+                return;
+            }
+            currentVoiceSessionId = sessionRow.id;
+
+            const container = document.getElementById('jitsi-container');
+            container.innerHTML = '';
+
+            try {
+                jitsiApi = new window.JitsiMeetExternalAPI('meet.jit.si', {
+                    roomName: `ReCall-${safeSlug}`,
+                    parentNode: container,
+                    width: '100%',
+                    height: 460,
+                    userInfo: { email: currentUser.email },
+                    configOverwrite: { startWithVideoMuted: true }
+                });
+
+                jitsiApi.addEventListener('readyToClose', () => endJitsiSession());
+
+                document.getElementById('btn-end-voice').disabled = false;
+                loadVoiceSessions();
+            } catch (err) {
+                await endJitsiSession();
+                alert("Failed to launch Jitsi room: " + (err?.message || err));
+            }
+        }
+
+        async function endJitsiSession() {
+            if (jitsiApi) {
+                try { jitsiApi.dispose(); } catch (_) {}
+                jitsiApi = null;
+            }
+            document.getElementById('jitsi-container').innerHTML = 'Voice session ended. Click "Start Voice Call" to begin a new session.';
+            document.getElementById('btn-start-voice').disabled = false;
+            document.getElementById('btn-end-voice').disabled = true;
+
+            if (currentVoiceSessionId && _supabase) {
+                const sessionId = currentVoiceSessionId;
+                currentVoiceSessionId = null;
+                await _supabase
+                    .from('voice_sessions')
+                    .update({ status: 'ended', ended_at: new Date().toISOString() })
+                    .eq('id', sessionId);
+            }
+            loadVoiceSessions();
+        }
+
+        async function loadVoiceSessions() {
+            if (!activeProject) return;
+            const { data: sessions } = await _supabase
+                .from('voice_sessions')
+                .select('*')
+                .eq('project_id', activeProject.id)
+                .order('started_at', { ascending: false });
+
+            const list = document.getElementById('voice-sessions-list');
+            if (!sessions || sessions.length === 0) {
+                list.innerHTML = '<p class="text-xs text-slate-500">No voice sessions logged yet.</p>';
+                return;
+            }
+
+            list.innerHTML = '';
+            sessions.forEach(s => {
+                list.innerHTML += `
+                    <div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-4 py-3">
+                        <div>
+                            <span class="font-mono text-slate-200">${s.room_name}</span>
+                            <span class="text-[11px] text-slate-500 ml-2">${new Date(s.started_at).toLocaleString()}</span>
+                        </div>
+                        <span class="text-xs ${s.status === 'active' ? 'text-emerald-400' : 'text-slate-400'}">${s.status}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function generateOutline() {
+            const outline = document.getElementById('manuscript-outline');
+            const sheet = document.getElementById('editable-manuscript-sheet');
+            const headings = sheet.querySelectorAll('h1, h2, h3');
+            if (!headings.length) {
+                outline.innerHTML = '<p class="text-xs text-slate-500 italic">No H1/H2/H3 headings found.</p>';
+                return;
+            }
+            outline.innerHTML = '';
+            headings.forEach((h, i) => {
+                const txt = h.innerText.trim();
+                if (!txt) return;
+                h.id = `doc-sec-${i}`;
+                const pad = h.tagName === 'H2' ? 'ml-3 text-xs' : (h.tagName === 'H3' ? 'ml-6 text-[11px]' : 'text-xs font-semibold');
+                outline.innerHTML += `<button type="button" onclick="document.getElementById('doc-sec-${i}')?.scrollIntoView({behavior:'smooth'})" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-slate-300 truncate ${pad}">📌 ${txt}</button>`;
+            });
+        }
+
+        function handleDocxUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const options = {
+                    convertImage: mammoth.images.imgElement((img) =>
+                        img.read("base64").then((buf) => ({ src: `data:${img.contentType};base64,${buf}` }))
+                    )
+                };
+                mammoth.convertToHtml({ arrayBuffer: e.target.result }, options)
+                    .then((res) => {
+                        document.getElementById('editable-manuscript-sheet').innerHTML = res.value;
+                        saveDocumentContent(true);
+                        generateOutline();
+                    })
+                    .catch(() => alert("Could not import .docx file."));
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function saveDocumentContent(showAlert) {
+            if (!activeProject) return;
+            const html = document.getElementById('editable-manuscript-sheet').innerHTML;
+            const { error } = await _supabase.from('projects').update({ document_content: html }).eq('id', activeProject.id);
+            if (!error) {
+                activeProject.document_content = html;
+                const badge = document.getElementById('save-status-badge');
+                badge.innerText = "🟢 Synced";
+                badge.className = "text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg";
+                generateOutline();
+                if (showAlert) alert("Manuscript saved!");
+            }
+        }
+
+        async function generateAiLedger() {
+            if (!activeProject) { alert("Select a project room first."); return; }
+            const btn = document.getElementById('btn-generate-ledger');
+            btn.disabled = true;
+            btn.innerText = "⏳ Generating...";
+
+            const customNotes = document.getElementById('ledger-custom-notes').value.trim();
+
+            try {
+                const { data, error } = await _supabase.functions.invoke('generate-ledger', {
+                    body: { project_id: activeProject.id, custom_notes: customNotes }
+                });
+
+                if (error) {
+                    let detail = error.message;
+                    try {
+                        const errBody = await error.context?.json();
+                        if (errBody?.error) detail = errBody.error;
+                    } catch (_) {
+                        try {
+                            const errText = await error.context?.text();
+                            if (errText) detail = errText;
+                        } catch (__) {}
+                    }
+                    alert("AI ledger error: " + detail);
+                } else if (data?.error) {
+                    alert("AI ledger error: " + data.error);
+                } else {
+                    document.getElementById('ledger-custom-notes').value = '';
+                    await loadAiLedgers();
+                }
+            } catch (err) {
+                alert("Could not reach generate-ledger function yet: " + (err?.message || err));
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "✨ Generate from Recent Chat";
+            }
+        }
+
+        async function loadAiLedgers() {
+            if (!activeProject) return;
+            const { data: ledgers } = await _supabase
+                .from('ai_discussion_ledgers')
+                .select('*')
+                .eq('project_id', activeProject.id)
+                .order('created_at', { ascending: false });
+
+            const list = document.getElementById('ledger-entries-list');
+            if (!ledgers || ledgers.length === 0) {
+                list.innerHTML = '<p class="text-xs text-slate-500">No AI discussion ledgers generated yet.</p>';
+                return;
+            }
+
+            list.innerHTML = '';
+            ledgers.forEach(item => {
+                list.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <span class="bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 text-xs px-3 py-1 rounded-full font-medium">🌐 Detected: ${item.detected_language}</span>
+                            <span class="text-xs text-slate-500">${new Date(item.created_at).toLocaleString()}</span>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Summary</h4>
+                            <p class="text-sm text-slate-200 mt-1">${item.summary}</p>
+                        </div>
+                        ${item.decisions ? `<div><h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Key Decisions</h4><p class="text-sm text-slate-300 mt-1 whitespace-pre-line">${item.decisions}</p></div>` : ''}
+                        ${item.action_items ? `<div><h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Action Items</h4><p class="text-sm text-emerald-300 mt-1 whitespace-pre-line">${item.action_items}</p></div>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        // =========================================================================
+        // ADVISER CHECKLIST & DEFENSE READINESS (MULTI-PROJECT)
+        // =========================================================================
+        function handleApprovalProjectDropdown(projectId) {
+            const idx = userProjects.findIndex(entry => String(entry.project?.id) === String(projectId));
+            if (idx !== -1) {
+                selectActiveProject(idx);
+                loadApprovals();
+            }
+        }
+
+        function populateApprovalProjectDropdown() {
+            const select = document.getElementById('approval-project-select');
+            if (!select) return;
+
+            if (!userProjects.length) {
+                select.innerHTML = '<option value="">No project rooms</option>';
+                return;
+            }
+
+            select.innerHTML = userProjects.map(entry => {
+                const p = entry.project;
+                const statusTag = p.approval_status === 'approved_for_defense' ? ' [Ready for Defense]' : '';
+                return `<option value="${escapeApprovalHtml(p.id)}">${escapeApprovalHtml(p.title)}${statusTag}</option>`;
+            }).join('');
+
+            if (activeProject) {
+                select.value = String(activeProject.id);
+            }
+        }
+
+        async function renderAllProjectsApprovalSummary(currentItems = []) {
+            const summaryBox = document.getElementById('all-projects-approval-summary');
+            if (!summaryBox) return;
+
+            if (!userProjects.length) {
+                summaryBox.innerHTML = '<p class="text-xs text-slate-500">No capstone project rooms found.</p>';
+                return;
+            }
+
+            const projectIds = userProjects.map(e => e.project.id);
+            const { data: allRows } = await _supabase
+                .from('approvals')
+                .select('project_id, status, adviser_verified')
+                .in('project_id', projectIds);
+
+            const rowsByProject = new Map();
+            (allRows || []).forEach(r => {
+                if (!rowsByProject.has(r.project_id)) rowsByProject.set(r.project_id, []);
+                rowsByProject.get(r.project_id).push(r);
+            });
+
+            if (activeProject && currentItems.length) {
+                rowsByProject.set(activeProject.id, currentItems);
+            }
+
+            summaryBox.innerHTML = userProjects.map((entry, idx) => {
+                const p = entry.project;
+                const items = rowsByProject.get(p.id) || [];
+                const verifiedCount = items.filter(i => i.adviser_verified || i.status === 'approved').length;
+                const isReady = p.approval_status === 'approved_for_defense' || (items.length > 0 && verifiedCount === items.length);
+                const isCurrent = activeProject && activeProject.id === p.id;
+
+                return `
+                    <div class="bg-slate-950 border ${isCurrent ? 'border-indigo-500' : 'border-slate-800'} rounded-xl p-4 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-sm font-bold text-white truncate">${escapeApprovalHtml(p.title)}</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">
+                                ${verifiedCount}/${items.length} adviser items verified • <span class="font-mono">${escapeApprovalHtml(p.room_code || '')}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold ${
+                                isReady
+                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            }">
+                                ${isReady ? 'Ready for Defense' : 'In Progress'}
+                            </span>
+                            <button type="button" onclick="selectActiveProject(${idx}); loadApprovals();"
+                                class="text-xs bg-slate-800 hover:bg-indigo-600 text-white px-2.5 py-1.5 rounded-lg transition-all">
+                                Open
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleChecklistItem(approvalId, nextCompleted) {
+            if (!activeProject || !_supabase) return;
+
+            const { error } = await _supabase
+                .from('approvals')
+                .update({
+                    student_completed: !!nextCompleted,
+                    status: nextCompleted ? 'accomplished_by_student' : 'pending',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', approvalId)
+                .eq('project_id', activeProject.id);
+
+            if (error) {
+                alert('Could not update checklist item: ' + error.message);
+                return;
+            }
+
+            await loadApprovals();
+        }
+
+        async function loadApprovals() {
+            populateApprovalProjectDropdown();
+
+            const list = document.getElementById('approvals-list');
+            const statusText = document.getElementById('defense-status-text');
+            const progressMeta = document.getElementById('defense-progress-meta');
+            const statusPill = document.getElementById('defense-status-pill');
+
+            if (!activeProject) {
+                statusText.innerText = 'No project room selected';
+                progressMeta.innerText = 'Create or select a capstone project room to view adviser checklist items.';
+                list.innerHTML = '<p class="text-xs text-slate-500">No approval records logged for this room yet.</p>';
+                await renderAllProjectsApprovalSummary([]);
+                return;
+            }
+
+            const { data: rows, error } = await _supabase
+                .from('approvals')
+                .select('*')
+                .eq('project_id', activeProject.id)
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                list.innerHTML = `<p class="text-xs text-rose-400">Failed to load adviser checklist: ${escapeApprovalHtml(error.message)}</p>`;
+                return;
+            }
+
+            const items = rows || [];
+            const totalCount = items.length;
+            const studentDoneCount = items.filter(r => r.student_completed || r.status === 'accomplished_by_student' || r.status === 'approved').length;
+            const adviserVerifiedCount = items.filter(r => r.adviser_verified || r.status === 'approved').length;
+            const allItemsVerified = totalCount > 0 && adviserVerifiedCount === totalCount;
+            const isApprovedForDefense = activeProject.approval_status === 'approved_for_defense' || allItemsVerified;
+
+            progressMeta.innerText = `${studentDoneCount}/${totalCount} marked accomplished by group • ${adviserVerifiedCount}/${totalCount} verified by adviser`;
+
+            if (isApprovedForDefense) {
+                statusText.innerText = `${activeProject.title} — Approved & Ready for Defense`;
+                statusPill.className = 'self-start sm:self-center text-xs px-3 py-1.5 rounded-full font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+                statusPill.innerText = '🎓 Approved & Ready for Defense';
+            } else if (totalCount === 0) {
+                statusText.innerText = `${activeProject.title} — Awaiting Adviser Checklist`;
+                statusPill.className = 'self-start sm:self-center text-xs px-3 py-1.5 rounded-full font-semibold bg-slate-800 text-slate-300 border border-slate-700';
+                statusPill.innerText = 'Pending Adviser Tasks';
+            } else {
+                statusText.innerText = `${activeProject.title} — Revision / Verification in Progress`;
+                statusPill.className = 'self-start sm:self-center text-xs px-3 py-1.5 rounded-full font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                statusPill.innerText = 'Revision Cycle Active';
+            }
+
+            if (items.length === 0) {
+                list.innerHTML = `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 text-xs text-slate-400">
+                        Your faculty adviser has not added checklist items for <strong>${escapeApprovalHtml(activeProject.title)}</strong> yet. Once your adviser posts what needs to be done, each item will appear here so you can mark it accomplished.
+                    </div>
+                `;
+            } else {
+                list.innerHTML = items.map(r => {
+                    const isVerified = !!(r.adviser_verified || r.status === 'approved');
+                    const isStudentDone = !!(r.student_completed || r.status === 'accomplished_by_student' || isVerified);
+                    const roundLabel = r.revision_round ? `Round ${r.revision_round}` : 'Checklist Item';
+
+                    let badgeClass = 'bg-slate-800 text-slate-300';
+                    let badgeLabel = r.status || 'pending';
+                    if (isVerified) {
+                        badgeClass = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+                        badgeLabel = 'Adviser Approved';
+                    } else if (isStudentDone) {
+                        badgeClass = 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30';
+                        badgeLabel = 'Accomplished (Awaiting Adviser Check)';
+                    } else if (r.status === 'changes_requested' || r.status === 'needs_revision') {
+                        badgeClass = 'bg-rose-500/15 text-rose-300 border border-rose-500/30';
+                        badgeLabel = 'Needs Revision';
+                    }
+
+                    return `
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h4 class="text-sm font-bold text-white">${escapeApprovalHtml(r.milestone_title || r.title || 'Adviser Task')}</h4>
+                                    <span class="text-[11px] px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">${escapeApprovalHtml(roundLabel)}</span>
+                                </div>
+                                <p class="text-xs text-slate-400">${escapeApprovalHtml(r.remarks || 'No adviser remarks provided.')}</p>
+                            </div>
+
+                            <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0">
+                                <span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badgeClass}">
+                                    ${escapeApprovalHtml(badgeLabel)}
+                                </span>
+                                <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-200 bg-slate-900 border border-slate-700 hover:border-indigo-500 rounded-xl px-3 py-2 cursor-pointer transition-all">
+                                    <input type="checkbox"
+                                        ${isStudentDone ? 'checked' : ''}
+                                        onchange="toggleChecklistItem('${escapeApprovalHtml(r.id)}', this.checked)"
+                                        class="rounded border-slate-600 text-indigo-600 focus:ring-0" />
+                                    <span>Mark Accomplished</span>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            await renderAllProjectsApprovalSummary(items);
+        }
+
+        async function loadChatMessages() {
+            if (!activeProject) return;
+            const { data: messages } = await _supabase
+                .from('messages')
+                .select('content, created_at, profiles(full_name)')
+                .eq('project_id', activeProject.id)
+                .order('created_at', { ascending: true });
+
+            const box = document.getElementById('chat-messages');
+            if (!messages || messages.length === 0) {
+                box.innerHTML = '<p class="text-xs text-slate-500 text-center">No messages yet.</p>';
+                return;
+            }
+            box.innerHTML = '';
+            messages.forEach(m => {
+                box.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+                        <div class="text-[10px] text-slate-500">${m.profiles?.full_name || 'User'} • ${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                        <div class="text-xs text-slate-200 mt-0.5">${m.content}</div>
+                    </div>
+                `;
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function sendChatMessage(e) {
+            e.preventDefault();
+            if (!activeProject) return;
             const input = document.getElementById('chat-input');
             const content = input.value.trim();
-            if (!content || !activeProject) return;
-
-            await _supabase.from('messages').insert([{ project_id: activeProject.id, sender_id: currentUser.id, content: content }]);
+            if (!content) return;
+            await _supabase.from('messages').insert([{ project_id: activeProject.id, sender_id: currentUser.id, content }]);
             input.value = '';
             loadChatMessages();
         }
 
-        function switchTab(tabName) {
-            ['workspace', 'team', 'chat'].forEach(t => {
-                document.getElementById(`content-${t}`).classList.add('hidden');
-                document.getElementById(`tab-${t}`).className = "px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-all whitespace-nowrap";
-            });
-            document.getElementById(`content-${tabName}`).classList.remove('hidden');
-            document.getElementById(`tab-${tabName}`).className = "px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white transition-all whitespace-nowrap";
-            if(tabName === 'workspace') generateOutline();
-        }
-
         async function handleLogout() {
-            await _supabase.auth.signOut();
+            if (jitsiApi) await endJitsiSession();
+            if (_supabase) await _supabase.auth.signOut();
             window.location.href = 'index.html';
         }
     </script>
